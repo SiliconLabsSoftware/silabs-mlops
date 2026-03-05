@@ -1,0 +1,32 @@
+# =============================================================================
+# SiLabs MLOps - Artifact Registry
+# =============================================================================
+# Define your Databricks Volume artifacts here.
+#
+# The CLI will automatically construct the full download URL using:
+#   DATABRICKS_HOST (from .env) + path below
+#
+# Usage:
+#   silabs-mlops model deploy --uri iot_model --ip 192.168.1.100
+#   silabs-mlops model download --uri wifi_firmware
+#
+# Rules:
+#   - 'path' must be the Databricks Volume path starting with /Volumes/...
+#   - 'type' can be: firmware, ml-model, binary
+#   - You can add as many artifacts as you need.
+# =============================================================================
+
+artifacts:
+  iot_model:
+    path: "/Volumes/mlops_dev/default/model_d/iot_model.tflite"
+    description: "IoT edge inference model"
+    type: "ml-model"
+    version: "1.0.0"
+
+  edge_v1:
+    path: "/Volumes/catalogA/schemaX/volume1/models/edge_v1/model.bin"
+    description: "Edge model for 2026 devices"
+    type: "firmware"
+    version: "1.0.3"
+
+

@@ -1,0 +1,10 @@
+click
+python-dotenv
+requests
+databricks-zerobus-ingest-sdk
+grpcio
+protobuf
+mlflow
+tensorflow
+PyYAML
+# databricks-api
