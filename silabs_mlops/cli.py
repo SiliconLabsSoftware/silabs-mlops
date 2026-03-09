@@ -1,24 +1,38 @@
 """
-Command-line interface for the silabs-mlops toolkit.
+SiLabs MLOps CLI
+================
+User-facing commands for:
+  • Data ingestion to Databricks (via ZeroBus)
+  • Model registry listing
+  • Raspberry Pi deployment (SCP + SSH + Commander on the Pi)
+  • NPU profiling (headless or GUI)
 
-This module defines user-facing commands for data ingestion, model management,
-TensorFlow Lite compilation, profiling, and deployment to Silicon Labs embedded
-devices. The CLI wraps internal MLOps utilities and provides a unified entry
-point for interacting with Databricks, ZeroBus, and Simplicity Commander.
+Note:
+  - Local/host deployment via Commander has been removed as requested.
+  - Raspberry Pi deployment requires Commander to be installed on the Pi
+    and accessible by the provided path (or via a wrapper).
 """
+
 import click
-import json
 import os
-from silabs_mlops.data import DataIngestor, IngestConfig
+
+# Internal package imports
+from silabs_mlops.data.ingest import DataIngestor, IngestConfig
 from silabs_mlops.config import Config
-from silabs_mlops.model import ModelDeployer, DeployConfig
+from silabs_mlops import model
 from silabs_mlops.model.registry import ArtifactRegistry
+from silabs_mlops.model.rpi_deployer import RPiDeployer
+
 
 @click.group()
 def main():
     """SiLabs MLOps CLI"""
     pass
 
+
+# -----------------------------------------------------------------------------
+# Ingestion
+# -----------------------------------------------------------------------------
 @main.command()
 @click.option('--file', required=True, type=click.Path(exists=True), help='Path to JSON data file to ingest.')
 @click.option('--endpoint', help='ZeroBus server endpoint (overrides .env)')
@@ -28,57 +42,54 @@ def main():
 @click.option('--client-secret', help='Service principal client secret (overrides .env)')
 def ingest(file, endpoint, workspace, table, client_id, client_secret):
     """
-    Ingest data to Databricks via ZeroBus.
-    
-    Reads JSON data from FILE and ingests it to the specified Databricks table.
-    Configuration can be provided via .env file or command-line options.
-    
+    Ingest JSON data to Databricks via ZeroBus.
+
+    Configuration can be provided via .env or CLI options.
+
     Example:
         silabs-mlops ingest --file sensor_data.json
     """
-    # Load configuration from .env or CLI options
     config = IngestConfig(
         server_endpoint=endpoint or Config.ZEROBUS_SERVER_ENDPOINT,
         workspace_url=workspace or Config.ZEROBUS_WORKSPACE_URL,
         table_name=table or Config.ZEROBUS_TABLE_NAME,
         client_id=client_id or Config.ZEROBUS_CLIENT_ID,
         client_secret=client_secret or Config.ZEROBUS_CLIENT_SECRET,
-        buffer_path=file
+        buffer_path=file,
     )
-    
-    # Validate configuration
-    missing_fields = []
+
+    missing = []
     if not config.server_endpoint:
-        missing_fields.append("ZEROBUS_SERVER_ENDPOINT")
+        missing.append("ZEROBUS_SERVER_ENDPOINT")
     if not config.workspace_url:
-        missing_fields.append("ZEROBUS_WORKSPACE_URL")
+        missing.append("ZEROBUS_WORKSPACE_URL")
     if not config.table_name:
-        missing_fields.append("ZEROBUS_TABLE_NAME")
+        missing.append("ZEROBUS_TABLE_NAME")
     if not config.client_id:
-        missing_fields.append("ZEROBUS_CLIENT_ID")
+        missing.append("ZEROBUS_CLIENT_ID")
     if not config.client_secret:
-        missing_fields.append("ZEROBUS_CLIENT_SECRET")
-    
-    if missing_fields:
-        click.echo(f"Error: Missing required configuration fields: {', '.join(missing_fields)}")
+        missing.append("ZEROBUS_CLIENT_SECRET")
+
+    if missing:
+        click.echo(f"Error: Missing required configuration fields: {', '.join(missing)}")
         click.echo("Set these in your .env file or provide via command-line options.")
-        return
-    
-    # Create ingestor and ingest data
+        raise click.Abort()
+
     ingestor = DataIngestor(config)
     success = ingestor.ingest()
-    
-    if success:
-        click.echo("Ingestion completed successfully.")
-    else:
-        click.echo("Ingestion failed.")
+    click.echo("✓ Ingestion completed successfully." if success else "✗ Ingestion failed.")
 
+
+# -----------------------------------------------------------------------------
+# Model management group (list, deploy via Raspberry Pi only)
+# -----------------------------------------------------------------------------
 @main.group()
-def model():
-    """Manage, compile, and deploy ML models for edge devices."""
+def model_cmd():
+    """Manage and deploy models for edge devices."""
     pass
 
-@model.command(name="list")
+
+@model_cmd.command(name="list")
 def list_artifacts():
     """
     List all registered artifacts from artifacts.yaml.
@@ -103,93 +114,99 @@ def list_artifacts():
         )
     click.echo("")
 
-@model.command()
-@click.option('--input', 'model_input', required=True, help='Path to Keras model (.h5, .keras) or SavedModel directory.')
-@click.option('--output', required=True, help='Path/filename for the compiled .tflite model.')
-@click.option('--size-opt/--no-size-opt', default=True, help='Optimize for model size (default: True).')
-def compile(model_input, output, size_opt):
-    """
-    Compile a TensorFlow/Keras model to optimized INT8 TFLite.
-    
-    Converts a standard model into a Silicon Labs optimized .tflite file 
-    with automated INT8 quantization and synthetic calibration.
-    """
-    click.echo(f"Compiling model: {model_input}")
-    try:
-        from silabs_mlops.model import compile as compile_model
-        tflite_path = compile_model(
-            model=model_input,
-            output_path=output,
-            optimize_for_size=size_opt
-        )
-        click.echo(f"Compilation successful: {tflite_path}")
-    except Exception as e:
-        click.echo(f"Compilation failed: {e}", err=True)
 
-@model.command()
+@model_cmd.command(name="deploy")
 @click.option('--uri', required=True, help=(
-    'Artifact name from artifacts.yaml (e.g. iot_model), '
-    'an MLflow URI (models:/...), '
-    'a Databricks Volume URL (https://...), '
-    'or a local file path.'
+    'Local file path to firmware/model (.s37/.bin/.hex). '
+    'Note: Registry/MLflow/Volumes are not resolved here; pass a concrete file path.'
 ))
-@click.option('--commander', help='Path to Simplicity Commander executable (auto-discovered if omitted).')
-@click.option('--ip', help='Target device IP address.')
-@click.option('--interface', default='swd', help='Connection interface (swd, jtag). Default: swd.')
-@click.option('--verify/--no-verify', default=True, help='Verify flash after writing. Default: True.')
-@click.option('--halt/--no-halt', default=False, help='Halt core after flashing. Default: False.')
-def deploy(uri, commander, ip, interface, verify, halt):
+@click.option('--commander', help='Path to Simplicity Commander executable on the Raspberry Pi '
+                                  '(e.g., /usr/local/bin/commander-wrapper or "commander" if in PATH).')
+@click.option('--rpi-host', required=True, help='Target Raspberry Pi IP/Hostname for remote flashing via SSH.')
+@click.option('--rpi-user', default='pi', show_default=True, help='Target Raspberry Pi SSH user.')
+@click.option('--remote-path', help='Optional absolute path on Pi where the file should be uploaded '
+                                    '(defaults to /tmp/<filename>).')
+def deploy(uri, commander, rpi_host, rpi_user, remote_path):
     """
-    Deploy a model to a Silicon Labs embedded device.
-    
-    Downloads the model (from MLflow or local) and flashes it 
-    to the target device using Simplicity Commander.
-    """
-    click.echo(f"Initializing deployment for: {uri}")
-    
-    config = DeployConfig(
-        model_uri=uri,
-        commander_path=commander,
-        device_ip=ip,
-        interface=interface,
-        verify=verify,
-        halt=halt,
-        noverify=not verify
-    )
-    
-    try:
-        deployer = ModelDeployer(config)
-        deployer.deploy()
-        click.echo("Deployment finished successfully!")
-    except Exception as e:
-        click.echo(f"Deployment failed: {e}", err=True)
+    Deploy a firmware/model to a Silicon Labs device via Raspberry Pi (SCP + SSH).
 
+    Steps:
+      1) Uploads the local file to the Raspberry Pi.
+      2) Runs Commander on the Pi to auto-detect J-Link and device part.
+      3) Flashes the image on the connected board.
+
+    Requirements on the Raspberry Pi:
+      - Commander installed and accessible (use a wrapper if needed).
+      - Correct USB permissions (udev rules), so flashing works without sudo.
+    """
+    click.echo(f"Initializing RPi deployment for: {uri}")
+    click.echo(f"Target: {rpi_user}@{rpi_host} (commander: {commander or 'commander'})")
+
+    try:
+        deployer = RPiDeployer(
+            rpi_host=rpi_host,
+            rpi_user=rpi_user,
+            local_file_path=uri,
+            commander_path=commander or "commander",
+        )
+
+        if remote_path:
+            # Override default /tmp/<basename> with the provided remote path
+            # by calling the internal steps directly.
+            import logging
+            logger = logging.getLogger(__name__)
+            ssh_target = f"{rpi_user}@{rpi_host}"
+            logger.info(f"Targeting remote Raspberry Pi: {ssh_target}")
+            print("Connected to Raspberry Pi")
+
+            deployer._scp_firmware(uri, ssh_target, remote_path)
+            print("Firmware uploaded")
+
+            jlink_serial = deployer._get_jlink_serial(ssh_target)
+            device_name = deployer._get_device_name(ssh_target, jlink_serial)
+            deployer._flash_firmware(ssh_target, remote_path, jlink_serial, device_name)
+        else:
+            # Standard deploy uses /tmp/<filename>
+            deployer.deploy()
+
+        click.echo("✓ Deployment finished successfully!")
+    except Exception as e:
+        click.echo(f"✗ Deployment failed: {e}", err=True)
+        raise click.Abort()
+
+
+# -----------------------------------------------------------------------------
+# Profiling
+# -----------------------------------------------------------------------------
 @main.command()
-@click.option('--model-path', '--model', required=True, type=click.Path(exists=True), help='Path to .tflite or .zip model.')
+@click.option('--model-path', '--model', required=True, type=click.Path(exists=True),
+              help='Path to .tflite or compiled .zip model.')
 @click.option('--device-id', '--device', help='Target device ID/Serial (auto-discovered if omitted).')
 @click.option('--output', type=click.Path(), help='Directory for profiling results.')
-@click.option('--accelerator', default='mvpv1', help='Hardware accelerator target (default: mvpv1).')
-@click.option('--platform', help='Target platform board (e.g., brd2605).')
+@click.option('--accelerator', default='mvpv1', show_default=True, help='Hardware accelerator target.')
+@click.option('--platform', help='Target platform board (e.g., brd2605, brd2608a).')
 @click.option('--gui', is_flag=True, help='Launch Profiler GUI.')
-def profile(model_path, device_id, output, accelerator, platform, gui):
+@click.option('--volume-path', help='Directly upload results to a Databricks Volume and delete local artifacts.')
+def profile(model_path, device_id, output, accelerator, platform, gui, volume_path):
     """
     Profile a model using the NPU Toolkit (mvp_profiler).
     """
     try:
-        from silabs_mlops import model
         result = model.profile(
             model_path=model_path,
             device_id=device_id,
             output_dir=output,
             gui=gui,
             accelerator=accelerator,
-            platform=platform
+            platform=platform,
+            volume_path=volume_path,  # pass-through; implement in NPUProfiler.profile if needed
         )
         if not gui:
             click.echo(f"[OK] Profiling completed. Results in: {result.output_dir}")
     except Exception as e:
-        click.echo(f"[FAIL] Profiling failed: {e}")
+        click.echo(f"[FAIL] Profiling failed: {e}", err=True)
         raise click.Abort()
+
 
 if __name__ == "__main__":
     main()

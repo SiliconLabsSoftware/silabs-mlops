@@ -1,3 +1,14 @@
+"""
+
+setup.py
+========
+
+Packaging configuration for the silabs-mlops-cli.
+
+Defines package metadata, dependencies, and the console entry point
+for the `silabs-mlops` command-line tool.
+"""
+
 from setuptools import setup, find_packages
 
 setup(
@@ -8,12 +19,13 @@ setup(
         "click",
         "requests",
         "python-dotenv",
-        "databricks-zerobus-ingest-sdk",
+        "PyYAML",
+        "databricks-zerobus-ingest-sdk>=0.2.0",
         "grpcio",
         "protobuf",
+        "mlflow",
         "tensorflow",
-        "PyYAML",
-        # Add other dependencies here
+        "numpy",
     ],
     entry_points={
         "console_scripts": [

@@ -1,10 +1,12 @@
 # Silicon Labs MLOps CLI
 
-The Silicon Labs MLOps CLI is a professional toolset designed to seamlessly bridge the gap between edge devices and cloud-based Machine Learning platforms. It provides a robust Command Line Interface (CLI) and Python API to manage the end-to-end MLOps lifecycle—focusing on high-throughput data ingestion to Databricks via ZeroBus and secure firmware/model deployment directly to Silicon Labs hardware.
+The Silicon Labs MLOps CLI is a professional toolset designed to seamlessly bridge the gap between edge devices and cloud-based Machine Learning platforms. It provides a robust Command Line Interface (CLI) and Python API to manage the end-to-end MLOps lifecycle—focusing on high-throughput data ingestion to Databricks via ZeroBus and secure firmware/model deployment to Silicon Labs hardware via Raspberry Pi.
+
+---
 
 ## Installation
 
-To use the `silabs-mlops` CLI command anywhere on your system, you need to install it. 
+To use the `silabs-mlops` CLI command anywhere on your system, you need to install it in your Python environment.
 
 ```bash
 # Standard installation for users
@@ -14,107 +16,42 @@ pip install .
 pip install -e .
 ```
 
+---
+
 ## Key Design Principles
 
-- Clear separation of concerns
-    - Data lifecycle ≠ Model lifecycle
-
-- Hardware-aware ML
-    - Compile and profile are first-class citizens
-
-- Governed deployments
-    - No unprofiled or unversioned model reaches devices
-
-- Cloud + Edge hybrid
-    - Edge execution, cloud intelligence
-
-- Databricks-native
-    - Delta Lake, Jobs, Model Registry as system of record
+- **Clear separation of concerns**: Data lifecycle ≠ Model lifecycle.
+- **Hardware-aware ML**: Profiling is a first-class citizen for edge performance.
+- **Governed deployments**: No unprofiled model reaches a physical device.
+- **Cloud + Edge hybrid**: Edge execution with Cloud intelligence.
+- **Databricks-native**: Uses Delta Lake, Jobs, and Model Registry as the system of record.
 
 ---
 
 ## High-Level Architecture Flow
-```
-Data Lifecycle
- └─ ingest    → ZeroBus → Databricks Bronze
 
-Model Lifecycle
- ├─ profile   → Simulator-based performance validation
- └─ deploy    → ZeroBus-based edge deployment
-```
+### Data Lifecycle
+- `ingest` → ZeroBus → Databricks Bronze (Delta Lake)
+
+### Model Lifecycle
+- `profile` → Simulator/Hardware-based performance validation
+- `deploy`  → SCP + SSH based remote edge deployment via Raspberry Pi
+
+---
 
 ## SDK Structure
 
-```
-silabs_mlops_sdk/
+```text
+silabs_mlops/
 ├── data/
-│   └── ingest/
-│
+│   └── ingest/     (ZeroBus integration)
 ├── model/
-│   ├── profile/
-│   └── deploy/
-│
-├── common/
-├── config/
-└── cli/
+│   ├── profile/    (NPU Profiler)
+│   └── deploy/     (RPi Deployer)
+├── common/         (Auth & Validators)
+├── config/         (Global configuration)
+└── cli.py          (Main CLI entry point)
 ```
----
-
-## Module Responsibilities
-`data.collect`
-
-### Purpose:
-Collect BLE sensor data on Raspberry Pi and buffer it locally.
-
-### Responsibilities:
-
-- BLE scanning
-- Local buffering (file / ring buffer)
-- Edge-safe fault handling
----
-`data.ingest`
-### Purpose:
-Send buffered data to the cloud ingestion layer.
-
-### Responsibilities:
-
-- Publish data to ZeroBus
-- Enforce Bronze schema compatibility
-- Reliable delivery semantics
-
----
-
-`model.profile`
-
-### Purpose:
-Validate compiled models using the Silicon Labs Simulator.
-
-### Responsibilities:
-
-- Measure:
-    - Cycle count
-    - Flash & RAM usage
-    - Latency
-    - Runtime errors
-- Persist profiling history in Databricks
-- Gate models before deployment
-
---- 
-`model.deploy`
-
-### Purpose:
-Deploy approved models to edge devices.
-
-### Responsibilities:
-
-- Query Databricks for:
-    - Correct model version
-    - Artifact download URL
-    - Target device(s)
-- Send deployment instructions via ZeroBus
-- Raspberry Pi downloads & installs model
-- Update deployment history
-- Support rollback
 
 ---
 
@@ -122,5 +59,14 @@ Deploy approved models to edge devices.
 
 For detailed instructions, architecture, and configuration, please refer to the following guides:
 
-- [**Quickstart Guide**](QUICKSTART.md): The fastest way to get your first model deployed and your first data ingested. Start here!
-- [**User Guide**](USER_GUIDE.md): Comprehensive documentation covering all CLI commands, authentication setups, expected data formats, and Python API usage.
+- [**Quickstart Guide**](QUICKSTART.md): The fastest way to get your first model deployed and your first data ingested. **Start here!**
+- [**User Guide**](USER_GUIDE.md): Comprehensive documentation covering CLI commands, authentication setups, and Python API usage.
+- [**RPi Deployment Guide**](RPI_DEPLOYMENT_GUIDE.md): Specialized guide for configuring Passwordless SSH and Simplicity Commander on a Raspberry Pi.
+
+---
+
+## Features
+
+- **Data Ingestion**: High-throughput JSON ingestion to Databricks Unity Catalog via ZeroBus.
+- **Remote Hardware Deployment**: Automated model/firmware flashing to Silicon Labs chips via SCP and SSH onto a Raspberry Pi.
+- **NPU Profiling**: Support for edge model performance profiling using Silicon Labs AI/ML tools.

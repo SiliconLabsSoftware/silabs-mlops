@@ -11,7 +11,10 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-
+import tempfile
+import requests
+from silabs_mlops.config import Config
+from silabs_mlops.logs import Logger
 
 @dataclass
 class LayerProfile:
@@ -44,6 +47,7 @@ class ProfileResult:
     report_json_path: Optional[str] = None
     pftrace_path: Optional[str] = None
     captured_packets_path: Optional[str] = None
+    history_log_path: Optional[str] = None
     # Raw report data
     raw_report: Optional[Dict[str, Any]] = None
 
@@ -77,6 +81,10 @@ class NPUProfiler:
     _PROFILER_CANDIDATES = ["mvp_profiler", "mvp_profiler.exe"]
     # Internal sml candidates as fallback
     _SML_CANDIDATES = ["sml", "sml.exe"]
+
+    def __init__(self):
+        """Initialize the profiler and the centralized CLI logger."""
+        self.logger = Logger()
 
     def _resolve_binary(self, candidates: List[str], override: Optional[str] = None) -> Optional[str]:
         """Resolve a binary path, using override or searching PATH."""
@@ -219,7 +227,8 @@ class NPUProfiler:
         accelerator: str = "mvpv1",
         platform: Optional[str] = None,
         weights_paging: bool = False,
-        use_simulator: bool = False
+        use_simulator: bool = False,
+        volume_path: Optional[str] = None
     ) -> ProfileResult:
         """
         Profile a model using the NPU Toolkit (mvp_profiler).
@@ -236,6 +245,7 @@ class NPUProfiler:
             platform:       Target platform (e.g., brd2605).
             weights_paging: Enable weights paging.
             use_simulator:  If True, runs profiling in local simulation mode (no hardware required).
+            volume_path:    If provided, uploads results to Databricks Volumes and deletes local files.
 
         Returns:
             ProfileResult dataclass with all profiling metrics and output paths.
@@ -250,14 +260,31 @@ class NPUProfiler:
         if not gui and not model_p.exists():
             raise FileNotFoundError(f"Model file not found: {model_path}")
 
+        # Automatically log the action start
+        action_msg = f"Started profiling model: {model_p.name}"
+        if device_id:
+            action_msg += f" on device ID {device_id}"
+        elif use_simulator:
+            action_msg += " (Local Simulation)"
+        
+        self.logger.log_model_profiling(
+            message=action_msg,
+            level="Info"
+        )
+
         # Resolve profiler command
         profiler_cmd = self._resolve_profiler(profiler_path)
         print(f"Using profiler command: {' '.join(profiler_cmd)}")
 
-        # Determine output directory
-        if not output_dir:
+        # Determine output directory (Temp dir if volume_path is set)
+        is_temp_dir = False
+        if volume_path:
+            output_dir = tempfile.mkdtemp(prefix="npu_prof_")
+            is_temp_dir = True
+        elif not output_dir:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_dir = str(Path.cwd() / "profiling_results" / f"{model_p.stem or 'gui'}-{ts}")
+        
         out_p = Path(output_dir)
         if not gui:
             out_p.mkdir(parents=True, exist_ok=True)
@@ -300,30 +327,150 @@ class NPUProfiler:
         print(f"Running: {' '.join(cmd)}\n")
 
         # Run profiler, streaming output
+        history_file_path = out_p / "profiling_history.log"
+        if not gui:
+            print(f"Logging profiling history to: {history_file_path}\n")
+
+        profiler_error = None
         try:
-            # Using shell=True for 'python -m' if needed, though list should work
-            proc = subprocess.run(
-                cmd,
-                text=True,
-                timeout=None if gui else timeout # GUI server runs indefinitely unless interrupted
-            )
-            if not gui and proc.returncode != 0:
-                raise RuntimeError(
-                    f"Profiler exited with code {proc.returncode}.\n"
-                    "Check tool logs and hardware connection."
-                )
+            if gui:
+                # GUI server runs indefinitely unless interrupted
+                proc = subprocess.run(cmd, text=True, timeout=None)
+            else:
+                # Stream output and save profiling history locally
+                with open(history_file_path, "w", encoding="utf-8") as history_file:
+                    proc = subprocess.Popen(
+                        cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT, # Merge stderr into stdout
+                        text=True,
+                        bufsize=1
+                    )
+                    
+                    # Stream to console and history file simultaneously
+                    for line in proc.stdout:
+                        print(line, end="")
+                        history_file.write(line)
+                        history_file.flush()
+                    
+                    try:
+                        proc.wait(timeout=timeout)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait()
+                        raise subprocess.TimeoutExpired(cmd, timeout)
+                
+                if proc.returncode != 0:
+                    profiler_error = RuntimeError(
+                        f"Profiler exited with code {proc.returncode}.\n"
+                        "Check tool logs and hardware connection."
+                    )
         except subprocess.TimeoutExpired:
-            raise RuntimeError(f"Profiler timed out after {timeout} seconds.")
+            profiler_error = RuntimeError(f"Profiler timed out after {timeout} seconds.")
         except Exception as e:
-            raise RuntimeError(f"Failed to launch profiler: {e}")
+            if not profiler_error:
+                profiler_error = RuntimeError(f"Failed to launch profiler: {e}")
 
         if gui:
+            if profiler_error:
+                raise profiler_error
             return ProfileResult(model_name="GUI", model_path="", device_id="", output_dir="")
 
-        # Parse results from output directory
+        # Parse results from output directory (even if it failed, grab history log)
         result = self._collect_results(model_p, device_id or "auto", out_p)
+        
+        # Upload to Databricks Volume if requested (even if it failed)
+        if volume_path and not gui:
+            remote_url = self._upload_to_volume(out_p, model_p.stem, volume_path)
+            result.output_dir = remote_url
+            if is_temp_dir:
+                shutil.rmtree(out_p, ignore_errors=True)
+
+        # Output the summary 
         self._print_summary(result)
+
+        # Re-raise the error after we have uploaded and summarized the logs
+        if profiler_error:
+            self.logger.log_model_profiling(
+                message=f"Profiling failed for {model_p.name} - Exit code {proc.returncode if 'proc' in locals() else 'Unknown'}",
+                level="Error"
+            )
+            # Inject the remote URL so the user knows where the logs are
+            raise RuntimeError(f"{profiler_error}\nFailed profiling logs uploaded to: {result.output_dir}")
+
+        self.logger.log_model_profiling(
+            message=f"Successfully profiled {model_p.name} - Arena: {result.arena_size_kb or 0} KB, MACs: {result.total_macs or 0}",
+            level="Success"
+        )
         return result
+
+    def _upload_to_volume(self, local_dir: Path, model_stem: str, custom_volume_path: str) -> str:
+        """Uploads profiling artifacts to Databricks Unity Catalog Volume."""
+        if not (Config.ZEROBUS_WORKSPACE_URL and Config.ZEROBUS_CLIENT_ID and Config.ZEROBUS_CLIENT_SECRET):
+            print("[warn] Missing ZEROBUS credentials. Cannot upload to Volumes.")
+            return str(local_dir)
+        
+        # Normalize DBX path
+        p = str(custom_volume_path).replace("\\", "/")
+        parts = [seg for seg in p.split("/") if seg]
+        p = "/" + "/".join(parts)
+        if not p.startswith("/Volumes/"):
+            print("[warn] Volume path must start with /Volumes/. Skipping upload.")
+            return str(local_dir)
+        
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        remote_base = f"{p}/{model_stem}-{ts}"
+        
+        try:
+            # 1. Get OAuth Token
+            token_url = f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/oidc/v1/token"
+            r = requests.post(
+                token_url,
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": Config.ZEROBUS_CLIENT_ID,
+                    "client_secret": Config.ZEROBUS_CLIENT_SECRET,
+                    "scope": "all-apis",
+                },
+            )
+            r.raise_for_status()
+            token = r.json()["access_token"]
+            
+            # 2. Upload Files
+            print(f"\n[dbx] Uploading results to Databricks Volume: {remote_base}")
+            uploaded = 0
+            for root, _, files in os.walk(local_dir):
+                for f in files:
+                    local_f = Path(root) / f
+                    rel_f = local_f.relative_to(local_dir).as_posix()
+                    dest_f = f"{remote_base}/{rel_f}"
+                    dest_dir = str(Path(dest_f).parent.as_posix())
+                    
+                    # Mkdir
+                    req_dir = requests.put(
+                        f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/api/2.0/fs/directories{dest_dir}",
+                        headers={"Authorization": f"Bearer {token}"}
+                    )
+                    if req_dir.status_code not in (200, 201, 204):
+                        continue
+                        
+                    # Put File
+                    with open(local_f, "rb") as file_bytes:
+                        req_put = requests.put(
+                            f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/api/2.0/fs/files{dest_f}",
+                            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/octet-stream"},
+                            data=file_bytes,
+                            params={"overwrite": "true"}
+                        )
+                        if req_put.status_code in (200, 204):
+                            uploaded += 1
+                            
+            print(f"[dbx] Successfully uploaded {uploaded} files.")
+            return remote_base
+            
+        except Exception as e:
+            print(f"[warn] Volume upload failed: {e}")
+            return str(local_dir)
 
     def _collect_results(self, model_p: Path, device_id: str, out_p: Path) -> ProfileResult:
         """
@@ -345,6 +492,7 @@ class NPUProfiler:
         # Search for primary output files
         summary_file = find_file(f"{model_p.stem}-profiling_summary.txt")
         report_file = find_file(f"{model_p.stem}-profiling_results.yaml")
+        history_log_file = find_file("profiling_history.log")
         
         # Fallbacks for generic names
         if not summary_file: summary_file = find_file("summary.txt")
@@ -354,6 +502,8 @@ class NPUProfiler:
             result.summary_txt_path = str(summary_file)
         if report_file:
             result.report_json_path = str(report_file)
+        if history_log_file:
+            result.history_log_path = str(history_log_file)
 
         # Parse results for structured data
         if report_file and report_file.exists():
@@ -463,6 +613,8 @@ class NPUProfiler:
             print(f"    [OK] summary.txt")
         if result.report_json_path:
             print(f"    [OK] report.json")
+        if result.history_log_path:
+            print(f"    [OK] {Path(result.history_log_path).name}")
         if result.pftrace_path:
             print(f"    [OK] {Path(result.pftrace_path).name} (Perfetto trace)")
         if result.captured_packets_path:

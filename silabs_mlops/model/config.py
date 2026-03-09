@@ -26,3 +26,5 @@ class DeployConfig:
     verify: bool = True
     halt: bool = False
     noverify: bool = False
+    rpi_host: Optional[str] = None
+    rpi_user: Optional[str] = "pi"

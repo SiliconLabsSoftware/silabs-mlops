@@ -1,14 +1,15 @@
 # Quick Start
 
-This guide helps you get the Silicon Labs MLOps SDK running end-to-end with the minimum required steps, from data ingestion to edge model deployment.
+This guide helps you get the Silicon Labs MLOps SDK running end-to-end with the minimum required steps, from data ingestion to edge model deployment via Raspberry Pi.
 
 ## Prerequisites
 Before starting, ensure you have:
 
 **Edge & Hardware**
-- Silicon Labs device connected (e.g., EFR32, xG24) over J-Link or Ethernet
-- Silicon Labs Simplicity Commander installed
-- Python 3.9+
+- Silicon Labs device connected (e.g., EFR32, xG24) to a **Raspberry Pi** via USB
+- Silicon Labs Simplicity Commander installed on the Raspberry Pi
+- Python 3.9+ installed on your local workstation
+- Passwordless SSH configured between your workstation and the Raspberry Pi (see [RPI_DEPLOYMENT_GUIDE.md](RPI_DEPLOYMENT_GUIDE.md))
 
 **Cloud / Platform**
 - Databricks workspace
@@ -17,7 +18,7 @@ Before starting, ensure you have:
 - ZeroBus broker access for streaming ingestion
 
 ## Installation
-Clone the SDK repository and install the CLI:
+Clone the SDK repository and install the CLI on your local workstation:
 
 ```bash
 git clone <repo-url>
@@ -55,7 +56,7 @@ artifacts:
 Send buffered sensor data to Databricks via ZeroBus.
 
 ```python
-from silabs_mlops.data import DataIngestor, IngestConfig
+from silabs_mlops.data.ingest import DataIngestor, IngestConfig
 
 config = IngestConfig(
     server_endpoint="https://broker.example.com",
@@ -75,51 +76,30 @@ ingestor.ingest()
 - Connects to ZeroBus
 - Data lands securely in Databricks Bronze Delta tables
 
-## Step 2: Compile the Model
+## Step 2: Deploy to Edge Devices via Raspberry Pi
 
-Once data is trained into a model in Databricks, developers export it. Locally, compile the model for Silicon Labs hardware.
-
-```python
-from silabs_mlops import model
-
-model.compile(
-    model="raw_model.h5",
-    output_path="optimized_model.tflite",
-    optimize_for_size=True
-)
-```
-
-**What happens:**
-- Converts TensorFlow/Keras format into a `.tflite` file
-- Applies automated INT8 quantization
-- Model is now ready for edge execution
-
-*(Note: In a standard workflow, this optimized model is then uploaded to a Databricks Volume or MLflow Registry).*
-
-## Step 3: Deploy to Edge Devices
-
-Download the optimized model from the Databricks cloud and flash it to the physical device.
+Upload the firmware/model to a remote Raspberry Pi and flash it to the physical device.
 
 ```python
-from silabs_mlops.model import ModelDeployer, DeployConfig
+from silabs_mlops.model.rpi_deployer import RPiDeployer
 
-config = DeployConfig(
-    model_uri="iot_model",
-    device_ip="192.168.1.100", # Optional if using direct USB debugging
-    verify=True,
-    commander_path=r"C:\Path\To\commander-cli.exe" # Optional if available in PATH
+deployer = RPiDeployer(
+    rpi_host="192.168.1.111",
+    rpi_user="aimlraspberry",
+    local_file_path="./my_model.s37",
+    commander_path="/home/aimlraspberry/Desktop/SimplicityCommander-Linux/commander-cli/commander-cli"
 )
 
-deployer = ModelDeployer(config)
 deployer.deploy()
 ```
 
 **What happens:**
-- SDK resolves "iot_model" to the Databricks Volume URL using `artifacts.yaml`
-- Securely negotiates an OAuth Bearer token
-- Downloads the model artifact
-- Invokes Simplicity Commander to flash the `.tflite` payload directly to the device memory
-- Confirms checksum and cleans up temporary downloads
+- Connects to the Raspberry Pi over SSH
+- SCPs the local firmware file to the Pi's `/tmp` directory
+- Remote invokes Simplicity Commander on the Pi
+- Auto-detects the J-Link serial and target chip
+- Flashes the payload directly to the device memory
+- Verifies the write and cleans up
 
 ---
 
@@ -131,9 +111,6 @@ The exact same workflow is available directly from the terminal without writing 
 # 1. Ingest edge data
 silabs-mlops ingest --file sensor_data.json
 
-# 2. Compile model for SiLabs hardware
-silabs-mlops model compile --input raw_model.h5 --output optimized_model.tflite
-
-# 3. Pull model from cloud and flash to hardware
-silabs-mlops model deploy --uri iot_model --ip 192.168.1.100
+# 2. Deploy firmware to device via Raspberry Pi
+silabs-mlops model deploy --uri ./my_model.s37 --rpi-host 192.168.1.111 --rpi-user aimlraspberry
 ```
