@@ -6,7 +6,7 @@ The Silicon Labs MLOps CLI is a professional toolset designed to seamlessly brid
 
 ## Installation
 
-To use the `silabs-mlops` CLI command anywhere on your system, you need to install it in your Python environment.
+To use the `silabs-mlops` command anywhere on your system, you need to install it in your Python environment.
 
 ```bash
 # Standard installation for users
@@ -59,9 +59,11 @@ silabs_mlops/
 
 For detailed instructions, architecture, and configuration, please refer to the following guides:
 
-- [**Quickstart Guide**](QUICKSTART.md): The fastest way to get your first model deployed and your first data ingested. **Start here!**
-- [**User Guide**](USER_GUIDE.md): Comprehensive documentation covering CLI commands, authentication setups, and Python API usage.
-- [**RPi Deployment Guide**](RPI_DEPLOYMENT_GUIDE.md): Specialized guide for configuring Passwordless SSH and Simplicity Commander on a Raspberry Pi.
+- [**Quickstart Guide**](quickstart.md): The fastest way to get your first model deployed and your first data ingested. **Start here!**
+- [**User Guide**](user_guide.md): Comprehensive documentation covering CLI commands, authentication setups, and Python API usage.
+- [**RPi Deployment Guide**](rpi_deployment_guide.md): Specialized guide for configuring Passwordless SSH and Simplicity Commander on a Raspberry Pi.
+- [**Data Ingestion Guide**](data_ingest_guide.md): High-performance streaming guide for ZeroBus.
+- [**Model Profiling Guide**](profiling_guide.md): Benchmarking models on Silicon Labs hardware and simulators.
 
 ---
 

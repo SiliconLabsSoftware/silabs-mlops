@@ -1,6 +1,15 @@
 # Model Profiling User Guide
 
-The Silicon Labs MLOps Model Profiling library provides a Python wrapper around the Silicon Labs NPU Toolkit (`mvp_profiler`). It allows developers to profile compiled `.tflite` or `.zip` models on actual Silicon Labs hardware or in a local simulator.
+The Silicon Labs MLOps Model Profiling library provides a Python wrapper around the Silicon Labs NPU Toolkit (`mvp_profiler`). It allows users to profile compiled `.tflite` or `.zip` models on actual Silicon Labs hardware or in a local simulator.
+
+
+With the unified configuration design:
+
+> **Call `data.config()` once. The model module automatically uses the same credentials for cloud uploads and logging.**
+
+This makes the profiling workflow simple, secure, and fully integrated with Databricks.
+
+---
 
 ## Key Features
 - **Hardware Integration**: Profile models directly on connected Silicon Labs boards.
@@ -8,10 +17,28 @@ The Silicon Labs MLOps Model Profiling library provides a Python wrapper around 
 - **Result Collections**: Captures arena size, total MACs, layer-by-layer metrics, and Perfetto traces.
 - **Cloud Integration**: Automatically uploads profiling artifacts and history logs to Databricks Unity Catalog Volumes.
 - **Automatic Logging**: Every profiling session is automatically tracked in the central CLI logger.
+- **Global Configuration Shared Across Modules**: No repeated credential entry — both `data` and `model` modules reuse the same config.
 
 ---
 
 ## Quick Start
+
+Before profiling, call the global config **once**. If you have already called it for data ingestion that's enough no need to call it again:
+
+```python 
+# Call this ONLY if you have NOT already configured the global credentials.
+# If you already called data.config() earlier (e.g., during data ingestion),
+# you DO NOT need to call it again before profiling.
+from silabs_mlops import data
+
+data.config(
+    server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
+    workspace_url="https://your-workspace.cloud.databricks.com",
+    table_name="catalog.schema.some_temp_table",   # Required globally (ignored by profiler)
+    client_id="your-service-principal-id",
+    client_secret="your-service-principal-secret"
+)
+```
 
 ### 1. Basic Profiling (Hardware)
 To profile a model on a connected Silicon Labs board:
@@ -42,7 +69,6 @@ Every profiling session generates a unique output directory (locally or in the c
 - **`profiling_summary.txt`**: A human-readable text summary of memory and cycles.
 - **`profiling_results.yaml`**: Structured YAML data of metrics and per-layer performance.
 - **`profiling_history.log`**: A complete capture of the profiler's console output (very useful for debugging errors).
-- **`report.pftrace`**: A Perfetto-compatible trace for deep bottleneck analysis.
 
 ---
 

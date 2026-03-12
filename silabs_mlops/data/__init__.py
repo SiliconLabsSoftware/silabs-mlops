@@ -22,6 +22,7 @@ Usage:
 from typing import List, Dict, Any, Optional
 
 from .ingest import IngestConfig, DataIngestor, ZerobusIngestClient
+from silabs_mlops.config import Config
 
 # Module-level configuration storage
 _config: Optional[IngestConfig] = None
@@ -72,6 +73,15 @@ def config(
         table_name=table_name,
         client_id=client_id,
         client_secret=client_secret
+    )
+    
+    # Sync with central Config for other modules (Profiler, Logger)
+    Config.update(
+        ZEROBUS_SERVER_ENDPOINT=server_endpoint,
+        ZEROBUS_WORKSPACE_URL=workspace_url,
+        ZEROBUS_TABLE_NAME=table_name,
+        ZEROBUS_CLIENT_ID=client_id,
+        ZEROBUS_CLIENT_SECRET=client_secret
     )
     print("[OK] Configuration saved. You can now use data.ingest() to send data.")
 

@@ -2,7 +2,10 @@
 
 The Silicon Labs MLOps Data Ingestion library provides a high-performance, secure way to stream IoT sensor data from edge devices directly into Databricks Delta Tables (Bronze layer) using the **ZeroBus Ingest** connector.
 
+The entire MLOps package (`data`, `model`, `logs`) uses a **single global configuration**, so you only call `data.config()` **once**, and all modules automatically authenticate and connect using the same credentials.
+
 ## Key Features
+- **One-Time Global Configuration**: Configure your Databricks/ZeroBus credentials once — both data ingestion and model profiling reuse it automatically.
 - **Zero-Configuration Ingestion**: Simple, programmatic API for sending single or batch records.
 - **Automatic Logging**: Every ingestion attempt (start, success, or error) is automatically tracked in the central CLI logger.
 - **Local Buffering**: Supports reading records from local JSON files (JSON Array or JSON Lines).
@@ -10,15 +13,15 @@ The Silicon Labs MLOps Data Ingestion library provides a high-performance, secur
 
 ---
 
-## Quick Start
+# Quick Start
 
-### 1. Configure Credentials
-Provide your ZeroBus and Databricks credentials once. These are typically saved in your `.env` file or passed through the `config` module.
+## 1. Configure Global Credentials  
+This initializes the global configuration **shared across the entire library**.
 
 ```python
-from silabs_mlops.data import config
+from silabs_mlops import data
 
-config(
+data.config(
     server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
     workspace_url="https://your-workspace.cloud.databricks.com",
     table_name="catalog.schema.sensor_table",

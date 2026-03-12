@@ -1,1 +1,23 @@
-.venv
+# Environment variables (Crucial: Do not commit!)
+.env
+
+# Python Virtual Environments
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg-info/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

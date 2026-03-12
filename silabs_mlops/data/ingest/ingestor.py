@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Optional
 
 from .config import IngestConfig
 from .zerobus_client import ZerobusIngestClient
+from silabs_mlops.logs import Logger
 
 
 class DataIngestor:
@@ -37,6 +38,7 @@ class DataIngestor:
             client_id=config.client_id,
             client_secret=config.client_secret,
         )
+        self.cli_logger = Logger()
 
     def _read_buffered_records(self, buffer_path: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -109,6 +111,10 @@ class DataIngestor:
             return False
 
         print(f"Preparing to ingest {len(records)} records to {self.config.table_name}...")
+        self.cli_logger.log_data_ingestion(
+            message=f"Starting batch ingestion of {len(records)} records to table '{self.config.table_name}'",
+            level="Info"
+        )
 
         # Diagnostic: show sanitized config so auth issues are easy to spot
         print(f"  Workspace:  {self.config.workspace_url}")
@@ -123,19 +129,26 @@ class DataIngestor:
 
             self.client.ingest_batch(records)
             print(f"Successfully ingested {len(records)} records to Databricks Delta Lake.")
+            self.cli_logger.log_data_ingestion(
+                message=f"Successfully ingested {len(records)} records to table '{self.config.table_name}'",
+                level="Success"
+            )
             return True
         except Exception as e:
             err = str(e)
             if "401" in err or "Unauthorized" in err:
                 print(f"Error during ingestion: {e}")
                 print("\n[AUTH FAILURE] 401 Unauthorized -- check your service principal permissions.")
+                self.cli_logger.log_data_ingestion(message=f"Ingestion failed (401 Unauthorized) for '{self.config.table_name}'", level="Error")
             elif "4044" in err or "decoder" in err.lower() or "encoder" in err.lower():
                 print(f"\n[SCHEMA MISMATCH ERROR] The server rejected the record format (Code 4044).")
                 print(f"  Details: {err}")
                 print(f"  Ensure your keys match the Databricks table schema exactly.")
+                self.cli_logger.log_data_ingestion(message=f"Ingestion failed (Schema Mismatch) for '{self.config.table_name}': {err}", level="Error")
             else:
                 print(f"Error during ingestion: {type(e).__name__}: {e}")
                 traceback.print_exc()
+                self.cli_logger.log_data_ingestion(message=f"Ingestion failed for '{self.config.table_name}': {err}", level="Error")
             return False
         finally:
             try:

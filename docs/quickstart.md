@@ -1,6 +1,6 @@
-# Quick Start
+# Quick start
 
-This guide helps you get the Silicon Labs MLOps SDK running end-to-end with the minimum required steps, from data ingestion to edge model deployment via Raspberry Pi.
+This guide helps you get the Silcion Labs MLOps CLI running end-to-end with the minimum required steps, from data ingestion to edge model deployment via Raspberry Pi.
 
 ## Prerequisites
 Before starting, ensure you have:
@@ -9,7 +9,7 @@ Before starting, ensure you have:
 - Silicon Labs device connected (e.g., EFR32, xG24) to a **Raspberry Pi** via USB
 - Silicon Labs Simplicity Commander installed on the Raspberry Pi
 - Python 3.9+ installed on your local workstation
-- Passwordless SSH configured between your workstation and the Raspberry Pi (see [RPI_DEPLOYMENT_GUIDE.md](RPI_DEPLOYMENT_GUIDE.md))
+- Passwordless SSH configured between your workstation and the Raspberry Pi (see [rpi_deployment_guide.md](rpi_deployment_guide.md))
 
 **Cloud / Platform**
 - Databricks workspace
@@ -51,9 +51,9 @@ artifacts:
 
 ---
 
-## Step 1: Ingest Data to Databricks
+## Step 1: Ingest data to Databricks
 
-Send buffered sensor data to Databricks via ZeroBus.
+Send buffered sensor data to Databricks via ZeroBus. For detailed information, see the [data_ingest_guide.md](data_ingest_guide.md).
 
 ```python
 from silabs_mlops.data.ingest import DataIngestor, IngestConfig
@@ -76,18 +76,26 @@ ingestor.ingest()
 - Connects to ZeroBus
 - Data lands securely in Databricks Bronze Delta tables
 
-## Step 2: Deploy to Edge Devices via Raspberry Pi
+## Step 2: Profile the model 
+
+Analyze your model's performance on the NPU before deployment. For detailed information, see the [profiling_guide.md](profiling_guide.md).
+
+```bash
+silabs-mlops profile --model ./my_model.tflite --accelerator mvpv1
+```
+
+## Step 3: Deploy to edge devices via Raspberry Pi
 
 Upload the firmware/model to a remote Raspberry Pi and flash it to the physical device.
 
 ```python
-from silabs_mlops.model.rpi_deployer import RPiDeployer
+from silabs_mlops.model.deployer import RPiDeployer
 
 deployer = RPiDeployer(
-    rpi_host="192.168.1.111",
-    rpi_user="aimlraspberry",
+    rpi_host="host_ip",
+    rpi_user="user_name",
     local_file_path="./my_model.s37",
-    commander_path="/home/aimlraspberry/Desktop/SimplicityCommander-Linux/commander-cli/commander-cli"
+    commander_path="/home/aimlraspberry/Desktop/SimplicityCommander-Linux/commander-cli/commander-cli"#(example)
 )
 
 deployer.deploy()
@@ -99,11 +107,10 @@ deployer.deploy()
 - Remote invokes Simplicity Commander on the Pi
 - Auto-detects the J-Link serial and target chip
 - Flashes the payload directly to the device memory
-- Verifies the write and cleans up
 
 ---
 
-## End-to-End (Single Command Flow via CLI)
+## End-to-end (Single Command Flow via CLI)
 
 The exact same workflow is available directly from the terminal without writing Python scripts:
 
@@ -111,6 +118,9 @@ The exact same workflow is available directly from the terminal without writing 
 # 1. Ingest edge data
 silabs-mlops ingest --file sensor_data.json
 
-# 2. Deploy firmware to device via Raspberry Pi
-silabs-mlops model deploy --uri ./my_model.s37 --rpi-host 192.168.1.111 --rpi-user aimlraspberry
+# 2. Profile model performance (Optional)
+silabs-mlops profile --model ./my_model.tflite --accelerator mvpv1
+
+# 3. Deploy firmware to device via Raspberry Pi
+silabs-mlops model deploy --uri ./my_model.s37 --rpi-host <RPI_IP_ADDRESS> --rpi-user <RPI_USERNAME>
 ```

@@ -3,25 +3,28 @@ SiLabs MLOps CLI
 ================
 User-facing commands for:
   • Data ingestion to Databricks (via ZeroBus)
-  • Model registry listing
   • Raspberry Pi deployment (SCP + SSH + Commander on the Pi)
   • NPU profiling (headless or GUI)
 
 Note:
-  - Local/host deployment via Commander has been removed as requested.
   - Raspberry Pi deployment requires Commander to be installed on the Pi
     and accessible by the provided path (or via a wrapper).
 """
 
-import click
 import os
+import sys
+
+# Suppress TensorFlow / oneDNN logging and warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+import click
 
 # Internal package imports
 from silabs_mlops.data.ingest import DataIngestor, IngestConfig
 from silabs_mlops.config import Config
 from silabs_mlops import model
-from silabs_mlops.model.registry import ArtifactRegistry
-from silabs_mlops.model.rpi_deployer import RPiDeployer
+from silabs_mlops.model.deployer import RPiDeployer
 
 
 @click.group()
@@ -81,52 +84,22 @@ def ingest(file, endpoint, workspace, table, client_id, client_secret):
 
 
 # -----------------------------------------------------------------------------
-# Model management group (list, deploy via Raspberry Pi only)
+# Deployment (Raspberry Pi SSH)
 # -----------------------------------------------------------------------------
 @main.group()
 def model_cmd():
-    """Manage and deploy models for edge devices."""
+    """Deploy models for edge devices via Raspberry Pi."""
     pass
 
 
-@model_cmd.command(name="list")
-def list_artifacts():
-    """
-    List all registered artifacts from artifacts.yaml.
-
-    Example:
-        silabs-mlops model list
-    """
-    registry = ArtifactRegistry()
-    artifacts = registry.list_artifacts()
-
-    if not artifacts:
-        click.echo("No artifacts registered. Add entries to artifacts.yaml.")
-        return
-
-    click.echo("\nRegistered Artifacts (from artifacts.yaml):\n")
-    click.echo(f"  {'NAME':<20} {'VERSION':<10} {'TYPE':<12} DESCRIPTION")
-    click.echo(f"  {'-'*20} {'-'*10} {'-'*12} {'-'*30}")
-    for name, meta in artifacts.items():
-        click.echo(
-            f"  {name:<20} {meta.get('version', 'N/A'):<10} "
-            f"{meta.get('type', 'N/A'):<12} {meta.get('description', '')}"
-        )
-    click.echo("")
-
-
 @model_cmd.command(name="deploy")
-@click.option('--uri', required=True, help=(
-    'Local file path to firmware/model (.s37/.bin/.hex). '
-    'Note: Registry/MLflow/Volumes are not resolved here; pass a concrete file path.'
-))
-@click.option('--commander', help='Path to Simplicity Commander executable on the Raspberry Pi '
-                                  '(e.g., /usr/local/bin/commander-wrapper or "commander" if in PATH).')
-@click.option('--rpi-host', required=True, help='Target Raspberry Pi IP/Hostname for remote flashing via SSH.')
-@click.option('--rpi-user', default='pi', show_default=True, help='Target Raspberry Pi SSH user.')
-@click.option('--remote-path', help='Optional absolute path on Pi where the file should be uploaded '
-                                    '(defaults to /tmp/<filename>).')
-def deploy(uri, commander, rpi_host, rpi_user, remote_path):
+@click.option('--uri', required=True, help='Local file path to firmware/model (.s37/.bin/.hex).')
+@click.option('--serial', help='Target J-Link serial number (optional).')
+@click.option('--commander', help='Path to Simplicity Commander on Raspberry Pi.')
+@click.option('--rpi-host', required=True, help='Target Pi IP/Hostname.')
+@click.option('--rpi-user', default='aimlraspberry', show_default=True, help='SSH user.')
+@click.option('--remote-path', help='Optional remote path on Pi.')
+def deploy(uri, serial, commander, rpi_host, rpi_user, remote_path):
     """
     Deploy a firmware/model to a Silicon Labs device via Raspberry Pi (SCP + SSH).
 
@@ -148,6 +121,7 @@ def deploy(uri, commander, rpi_host, rpi_user, remote_path):
             rpi_user=rpi_user,
             local_file_path=uri,
             commander_path=commander or "commander",
+            jlink_serial=serial,
         )
 
         if remote_path:
@@ -162,12 +136,26 @@ def deploy(uri, commander, rpi_host, rpi_user, remote_path):
             deployer._scp_firmware(uri, ssh_target, remote_path)
             print("Firmware uploaded")
 
-            jlink_serial = deployer._get_jlink_serial(ssh_target)
-            device_name = deployer._get_device_name(ssh_target, jlink_serial)
-            deployer._flash_firmware(ssh_target, remote_path, jlink_serial, device_name)
+            # Resolve serial (interactive if not provided)
+            serial_to_use = serial
+            if not serial_to_use:
+                serials = deployer._get_jlink_serials(ssh_target)
+                if not serials:
+                    raise RuntimeError("No J-Link devices connected.")
+                if len(serials) == 1:
+                    serial_to_use = serials[0]
+                else:
+                    print("\nMultiple devices detected. Please select one:")
+                    for i, s in enumerate(serials, 1):
+                        print(f"{i}) J-Link Serial: {s}")
+                    choice = click.prompt(f"\nSelect board [1-{len(serials)}]", type=int)
+                    serial_to_use = serials[choice - 1]
+
+            device_name = deployer._get_device_name(ssh_target, serial_to_use)
+            deployer._flash_firmware(ssh_target, remote_path, serial_to_use, device_name)
         else:
-            # Standard deploy uses /tmp/<filename>
-            deployer.deploy()
+            # Standard deploy uses /tmp/<filename> (now with interactive selection)
+            deployer.deploy(jlink_serial=serial)
 
         click.echo("✓ Deployment finished successfully!")
     except Exception as e:

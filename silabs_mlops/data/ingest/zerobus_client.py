@@ -9,6 +9,8 @@ try:
 except ImportError:
     ZEROBUS_AVAILABLE = False
 
+from silabs_mlops.logs import Logger
+
 
 class ZerobusIngestClient:
     """
@@ -56,6 +58,7 @@ class ZerobusIngestClient:
 
         self._sdk = None
         self._stream = None
+        self.logger = Logger()
 
     def connect(self) -> None:
         """Initialize ZeroBus stream connection."""
@@ -69,12 +72,17 @@ class ZerobusIngestClient:
             ack_callback=self.ack_callback if self.ack_callback else None
         )
 
-        self._stream = self._sdk.create_stream(
-            self.client_id,
-            self.client_secret,
-            table_properties,
-            options,
-        )
+        try:
+            self._stream = self._sdk.create_stream(
+                self.client_id,
+                self.client_secret,
+                table_properties,
+                options,
+            )
+            self.logger.log_data_ingestion(f"Successfully connected to ZeroBus stream for table: {self.table_name}", level="Success")
+        except Exception as e:
+            self.logger.log_data_ingestion(f"Failed to connect to ZeroBus stream for table {self.table_name}. Error: {e}", level="Error")
+            raise e
 
     def ingest_record(self, record: Dict[str, Any], wait_for_ack: bool = True) -> None:
         """
@@ -109,5 +117,10 @@ class ZerobusIngestClient:
     def close(self) -> None:
         """Close ZeroBus stream safely."""
         if self._stream:
-            self._stream.close()
-            self._stream = None
+            try:
+                self._stream.close()
+                self.logger.log_data_ingestion(f"Closed ZeroBus stream for table: {self.table_name}", level="Info")
+            except Exception as e:
+                self.logger.log_data_ingestion(f"Error closing ZeroBus stream for table {self.table_name}: {e}", level="Warning")
+            finally:
+                self._stream = None

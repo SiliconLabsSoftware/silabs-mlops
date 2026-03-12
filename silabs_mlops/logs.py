@@ -150,15 +150,15 @@ class Logger:
                     "Content-Type": "application/json"
                 }
                 
-                statement = f"INSERT INTO {self.table_name} (timestamp, type, level, message, source) VALUES (?, ?, ?, ?, ?)"
+                statement = f"INSERT INTO {self.table_name} (`timestamp`, `type`, `level`, `message`, `source`) VALUES (?, ?, ?, ?, ?)"
                 payload = {
                     "warehouse_id": wid,
                     "statement": statement,
                     "parameters": [
-                        {"name": "timestamp", "value": log_entry["timestamp"], "type": "STRING"},
-                        {"name": "type", "value": log_entry["type"], "type": "STRING"},
-                        {"name": "level", "value": log_entry["level"], "type": "STRING"},
-                        {"name": "message", "value": log_entry["message"], "type": "STRING"},
+                        {"value": log_entry["timestamp"], "type": "STRING"},
+                        {"value": log_entry["type"], "type": "STRING"},
+                        {"value": log_entry["level"], "type": "STRING"},
+                        {"value": log_entry["message"], "type": "STRING"},
                         {"name": "source", "value": log_entry["source"], "type": "STRING"}
                     ]
                 }
@@ -249,27 +249,31 @@ class Logger:
         success_count = 0
         
         for i, log_entry in enumerate(logs):
-            statement = f"INSERT INTO {self.table_name} (timestamp, type, level, message, source) VALUES (?, ?, ?, ?, ?)"
+            # Escaping keywords like timestamp, type, and source which are often reserved
+            statement = f"INSERT INTO {self.table_name} (`timestamp`, `type`, `level`, `message`, `source`) VALUES (?, ?, ?, ?, ?)"
             payload = {
                 "warehouse_id": wid,
                 "statement": statement,
                 "parameters": [
-                    {"name": "timestamp", "value": log_entry["timestamp"], "type": "STRING"},
-                    {"name": "type", "value": log_entry["type"], "type": "STRING"},
-                    {"name": "level", "value": log_entry["level"], "type": "STRING"},
-                    {"name": "message", "value": log_entry["message"], "type": "STRING"},
-                    {"name": "source", "value": log_entry.get("source", "System"), "type": "STRING"}
+                    {"value": log_entry["timestamp"], "type": "STRING"},
+                    {"value": log_entry["type"], "type": "STRING"},
+                    {"value": log_entry["level"], "type": "STRING"},
+                    {"value": log_entry["message"], "type": "STRING"},
+                    {"value": log_entry.get("source", "System"), "type": "STRING"}
                 ]
             }
             try:
                 response = requests.post(url, headers=headers, json=payload)
-                response.raise_for_status()
+                if response.status_code not in (200, 202):
+                    print(f"\n[ERROR] Failed to upload log {i+1}: {response.status_code} - {response.text}")
+                    continue
+                
                 success_count += 1
                 import sys
                 sys.stdout.write(f"\rUploading... {i+1}/{len(logs)} completed.")
                 sys.stdout.flush()
             except Exception as e:
-                pass
+                print(f"\n[ERROR] Exception uploading log {i+1}: {e}")
                 
         print(f"\n✓ Successfully Bulk Synced {success_count} local logs into {self.table_name}!")
 

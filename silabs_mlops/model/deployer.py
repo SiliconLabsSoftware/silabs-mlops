@@ -1,314 +1,197 @@
-"""Model Deployment to Silicon Labs Devices."""
+"""
+Raspberry Pi Firmware Deployer.
+Uploads a firmware file to a Raspberry Pi and flashes it to a Silabs board.
+"""
+
 import subprocess
 import logging
+import re
 import os
-import shutil
-import tempfile
-import mlflow
-from silabs_mlops.model.config import DeployConfig
-from silabs_mlops.model.registry import ArtifactRegistry, is_artifact_name
-from silabs_mlops.common.validators import (
-    validate_device_ip,
-    validate_model_uri,
-    resolve_commander_path,
-)
-from silabs_mlops.common.auth import get_databricks_token
-
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 logger = logging.getLogger(__name__)
 
-# Supported firmware/model file extensions
-_SUPPORTED_EXTENSIONS = ('.s37', '.bin', '.hex', '.tflite')
 
-
-class ModelDeployer:
+class RPiDeployer:
     """
-    Orchestrates model deployment to Silicon Labs embedded devices.
-
-    Workflow:
-        1. Validate all inputs (URI, IP, Commander path).
-        2. Download the model artifact from the appropriate source.
-        3. Flash the artifact to the target device using Simplicity Commander.
+    Deploy and flash firmware to a Silabs device connected to a Raspberry Pi.
+    - Uploads firmware using SCP
+    - Runs Commander on the Raspberry Pi using SSH
+    - Auto-detects J-Link serial and MCU part number (via "Part Number : ...")
     """
 
-    def __init__(self, config: DeployConfig):
-        """
-        Initialize and validate the deployment configuration.
+    def __init__(self, rpi_host: str, rpi_user: str, local_file_path: str, commander_path: str, jlink_serial: str = None):
+        self.rpi_host = rpi_host
+        self.rpi_user = rpi_user
+        self.local_file_path = local_file_path
+        self.commander_path = commander_path  # Default/Fallback path
+        self.resolved_commander = commander_path # Updated during discovery
+        self.jlink_serial = jlink_serial
 
-        Args:
-            config: DeployConfig object containing all deployment settings.
+        if not os.path.exists(self.local_file_path):
+            raise FileNotFoundError(f"Local firmware file not found: {self.local_file_path}")
 
-        Raises:
-            ValueError: If any config field fails validation.
-            FileNotFoundError: If Simplicity Commander cannot be found.
-        """
-        self.config = config
-        self._validate_config()
+    # ----------------------------------------------------------
+    def deploy(self, jlink_serial: str = None):
+        remote_path = f"/tmp/{os.path.basename(self.local_file_path)}"
+        ssh_target = f"{self.rpi_user}@{self.rpi_host}"
 
-    # ------------------------------------------------------------------
-    # Validation
-    # ------------------------------------------------------------------
+        logger.info(f"Targeting remote Raspberry Pi: {ssh_target}")
+        print("Connected to Raspberry Pi")
 
-    def _validate_config(self):
-        """Runs all sanity checks on the configuration before deployment."""
-        logger.info("Validating deployment configuration...")
+        # 0. Smart Discovery: Find Commander on the remote Pi
+        self.resolved_commander = self._find_remote_commander(ssh_target)
 
-        self.config.model_uri = self._resolve_artifact_name(self.config.model_uri)
-        self.config.model_uri = validate_model_uri(self.config.model_uri)
-        self.config.device_ip = validate_device_ip(self.config.device_ip)
-        self.config.commander_path = resolve_commander_path(self.config.commander_path)
+        # 1. Upload firmware
+        self._scp_firmware(self.local_file_path, ssh_target, remote_path)
+        print("Firmware uploaded")
 
-        logger.info("Configuration validated successfully.")
-
-    # ------------------------------------------------------------------
-    # Artifact Registry Resolver
-    # ------------------------------------------------------------------
-
-    def _resolve_artifact_name(self, uri: str) -> str:
-        """
-        If the user provided a short artifact name (e.g. 'iot_model'),
-        look it up in artifacts.yaml and return the full Databricks URL.
-
-        If the URI is already a full path (http/https, models:/, local path),
-        it is returned unchanged.
-
-        Args:
-            uri: A short artifact name or a full model URI.
-
-        Returns:
-            A fully-qualified URI ready for downloading.
-        """
-        if not is_artifact_name(uri):
-            return uri  # Already a full URI / local path — pass through unchanged
-
-        logger.info(f"Short artifact name detected: '{uri}'. Resolving via registry...")
-        registry = ArtifactRegistry()
-        resolved = registry.resolve(uri)
-        return resolved
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def deploy(self):
-        """
-        Orchestrates the full deployment process:
-          1. Download model artifact to a secure temp directory.
-          2. Flash it to the target device via Simplicity Commander.
-          3. Always clean up the temp directory afterwards (success or failure).
-
-
-        Raises:
-            Exception: Re-raises any exception from download or flash steps.
-        """
-        logger.info(f"Starting deployment for model URI: {self.config.model_uri}")
-
-        tmp_dir = tempfile.mkdtemp(prefix="silabs_mlops_deploy_")
-        logger.info(f"Temporary working directory: {tmp_dir}")
-
-        try:
-            model_path = self._download_model(tmp_dir=tmp_dir)
-            logger.info(f"Model ready at: {model_path}")
-
-            self._flash_model(model_path)
-            logger.info("Deployment completed successfully.")
-
-        except Exception:
-            raise
-
-        finally:
-            if os.path.isdir(tmp_dir):
-                shutil.rmtree(tmp_dir, ignore_errors=True)
-                logger.info(f"Temporary files cleaned up: {tmp_dir}")
-
-    # ------------------------------------------------------------------
-    # Private Helpers
-    # ------------------------------------------------------------------
-
-    def _download_model(self, tmp_dir: str) -> str:
-        """
-        Downloads the model artifact from the appropriate source.
-
-        Resolution order:
-          1. Local path (already on disk) → use as-is (never deleted).
-          2. HTTP/HTTPS URL (Databricks Volume) → download into tmp_dir.
-          3. MLflow URI (models:/ or runs:/) → download into tmp_dir via MLflow.
-
-        Args:
-            tmp_dir: Secure temporary directory where downloads are stored.
-
-        Returns:
-            Absolute local path to the model file.
-
-        Raises:
-            FileNotFoundError: If no supported firmware file is found.
-        """
-        logger.info(f"Downloading model from: {self.config.model_uri}")
-
-        try:
-            if os.path.exists(self.config.model_uri):
-                logger.info("Using local model file.")
-                return self.config.model_uri
-
-            if self.config.model_uri.startswith(('http://', 'https://')):
-                return self._download_from_url(self.config.model_uri, dest_dir=tmp_dir)
-
-            local_path = mlflow.artifacts.download_artifacts(
-                artifact_uri=self.config.model_uri,
-                dst_path=tmp_dir
-            )
-
-            if os.path.isdir(local_path):
-                return self._find_firmware_in_dir(local_path)
-
-            return local_path
-
-        except Exception as e:
-            logger.error(f"Failed to download model: {e}")
-            raise
-
-    def _download_from_url(self, url: str, dest_dir: str) -> str:
-        """
-        Downloads a file from a direct URL (e.g. Databricks Volume).
-        Uses DATABRICKS_TOKEN env var for auth if available.
-
-        Args:
-            url: HTTP/HTTPS URL to the model file.
-            dest_dir: Directory where the downloaded file is saved.
-
-        Returns:
-            Absolute local path to the downloaded file.
-
-        Raises:
-            requests.HTTPError: If the server returns a non-2xx status code.
-        """
-        import requests
-
-        host = os.getenv("DATABRICKS_HOST", "").rstrip("/")
-        try:
-            token = get_databricks_token(host)
-            headers = {"Authorization": f"Bearer {token}"}
-        except EnvironmentError:
-            logger.warning("No Databricks credentials found. Attempting unauthenticated download.")
-            headers = {}
-
-        filename = url.split("/")[-1]
-        local_path = os.path.join(dest_dir, filename)
-
-        logger.info(f"Downloading to: {local_path}")
-        response = requests.get(url, headers=headers, stream=True)
-
-        if response.status_code == 401:
-            raise PermissionError(
-                "[Download Error] Authentication failed (HTTP 401).\n"
-                "  Ensure DATABRICKS_TOKEN is set in your environment.\n"
-                "  Example: set DATABRICKS_TOKEN=dapi..."
-            )
-        if response.status_code == 403:
-            raise PermissionError(
-                "[Download Error] Access denied (HTTP 403).\n"
-                "  Your token may not have READ permission on this Volume.\n"
-                "  Check Unity Catalog permissions for the target Volume."
-            )
-        if response.status_code == 404:
-            raise FileNotFoundError(
-                f"[Download Error] File not found on server (HTTP 404).\n"
-                f"  URL: {url}\n"
-                "  Verify the Databricks Volume path and file name are correct."
-            )
-
-        response.raise_for_status()  # Catch any other HTTP errors
-
-        with open(local_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-
-        return local_path
-
-    def _find_firmware_in_dir(self, directory: str) -> str:
-        """
-        Locates a supported firmware/model file inside a directory.
-
-        Args:
-            directory: Path to directory returned by MLflow.
-
-        Returns:
-            Absolute path to the firmware file.
-
-        Raises:
-            FileNotFoundError: If no supported file is found.
-        """
-        all_files = os.listdir(directory)
-        firmware_files = [f for f in all_files if f.lower().endswith(_SUPPORTED_EXTENSIONS)]
-
-        if not firmware_files:
-            raise FileNotFoundError(
-                f"[Download Error] No supported firmware file found in MLflow artifact directory.\n"
-                f"  Directory : {directory}\n"
-                f"  Found     : {all_files}\n"
-                f"  Supported : {_SUPPORTED_EXTENSIONS}\n"
-                "  Ensure your MLflow model artifact contains a .tflite, .s37, .bin, or .hex file."
-            )
-
-        if len(firmware_files) > 1:
-            logger.warning(
-                f"Multiple firmware files found: {firmware_files}. "
-                f"Using the first one: {firmware_files[0]}"
-            )
-
-        return os.path.join(directory, firmware_files[0])
-
-    def _flash_model(self, model_path: str):
-        """
-        Executes Simplicity Commander to flash the model to the device.
-
-        Args:
-            model_path: Local path to the firmware/model file to flash.
-
-        Raises:
-            RuntimeError: If Commander returns a non-zero exit code.
-        """
-        logger.info("Flashing model to device via Simplicity Commander...")
-
-        command = [self.config.commander_path, "flash", model_path]
-
-        if self.config.device_ip:
-            command.extend(["--ip", self.config.device_ip])
-
-        if self.config.noverify:
-            command.append("--noverify")
-        elif self.config.verify:
-            command.append("--verify")
-
-        if self.config.halt:
-            command.append("--halt")
-
-        logger.info(f"Executing: {' '.join(command)}")
-
-        try:
-            result = subprocess.run(
-                command,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            logger.info(f"Commander Output:\n{result.stdout}")
-
-        except subprocess.CalledProcessError as e:
-            commander_output = e.stderr.strip() if e.stderr else None
-
-            if commander_output:
-                user_message = (
-                    f"Simplicity Commander failed (exit code {e.returncode}).\n"
-                    f"  Commander said: {commander_output}"
-                )
+        # 2. Select J-Link serial (Interactive if not provided)
+        serial_to_use = jlink_serial or self.jlink_serial
+        if not serial_to_use:
+            serials = self._get_jlink_serials(ssh_target)
+            if not serials:
+                raise RuntimeError("No J-Link devices connected to the Raspberry Pi.")
+            
+            if len(serials) == 1:
+                serial_to_use = serials[0]
+                print(f"Auto-selected only connected device: {serial_to_use}")
             else:
-                # No output from Commander — common when device is unreachable
-                user_message = (
-                    f"Simplicity Commander could not reach the device (exit code {e.returncode}).\n"
-                    "  This usually means the device is not connected or the IP is incorrect.\n"
-                    f"  Device IP   : {self.config.device_ip or 'not specified'}\n"
-                    "  Next step   : Connect the device and verify the IP is reachable."
-                )
+                print("\nMultiple devices detected. Please select one:")
+                for i, s in enumerate(serials, 1):
+                    print(f"{i}) J-Link Serial: {s}")
+                
+                choice = input(f"\nSelect board [1-{len(serials)}]: ").strip()
+                try:
+                    idx = int(choice) - 1
+                    if 0 <= idx < len(serials):
+                        serial_to_use = serials[idx]
+                    else:
+                        raise ValueError()
+                except ValueError:
+                    raise RuntimeError("Invalid selection. Aborting.")
 
-            raise RuntimeError(user_message)
+        # 3. Detect device part number from device info
+        device_name = self._get_device_name(ssh_target, serial_to_use)
+
+        # 4. Flash firmware
+        self._flash_firmware(ssh_target, remote_path, serial_to_use, device_name)
+
+    def _find_remote_commander(self, ssh_target: str) -> str:
+        """
+        Attempts to automatically locate the Simplicity Commander executable on the Pi.
+        Checks: PATH, Desktop, and Home directory.
+        """
+        # Search commands for standard names and the specific user path found
+        search_snippet = (
+            "which commander || "
+            "which commander-cli || "
+            "find /home/$USER/Desktop -maxdepth 3 -name commander-cli -executable -type f 2>/dev/null | head -n 1 || "
+            "find /home/$USER/Desktop -maxdepth 3 -name commander -executable -type f 2>/dev/null | head -n 1 || "
+            "find /home/$USER -maxdepth 2 -name commander -executable -type f 2>/dev/null | head -n 1"
+        )
+        
+        cmd = ["ssh", ssh_target, search_snippet]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        resolved = result.stdout.strip()
+        if resolved:
+            logger.info(f"Auto-detected commander at: {resolved}")
+            return resolved
+            
+        # Fallback to the provided path if discovery fails
+        logger.warning(f"Could not auto-detect commander. Falling back to: {self.commander_path}")
+        return self.commander_path
+
+    # ----------------------------------------------------------
+    def _scp_firmware(self, local: str, ssh_target: str, remote: str):
+        # Added resilience for unstable networks: 30s timeout and 5 attempts
+        cmd = [
+            "scp", 
+            "-o", "ConnectTimeout=30", 
+            "-o", "ConnectionAttempts=5",
+            local, f"{ssh_target}:{remote}"
+        ]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        if result.returncode != 0:
+            raise RuntimeError(f"SCP failed (check network/IP):\n{result.stderr}")
+
+    # ----------------------------------------------------------
+    def _get_jlink_serials(self, ssh_target: str) -> list:
+        """
+        Run `commander adapter list` and extract all serial numbers.
+        """
+        cmd = [
+            "ssh", 
+            "-o", "ConnectTimeout=30", 
+            "-o", "ConnectionAttempts=5",
+            ssh_target,
+            f"{self.resolved_commander} adapter list"
+        ]
+
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Adapter list failed:\n{result.stderr}")
+
+        serials = re.findall(r"serialNumber\s*=\s*(\d+)", result.stdout)
+        return serials
+
+    # ----------------------------------------------------------
+    def _get_device_name(self, ssh_target: str, jlink_serial: str) -> str:
+        """
+        Run:
+            commander device info --serialno <SN>
+
+        Extract device name from:
+            Part Number : EFR32MG26B510F3200IM68
+        """
+        cmd = [
+            "ssh", 
+            "-o", "ConnectTimeout=30", 
+            "-o", "ConnectionAttempts=5",
+            ssh_target,
+            f"{self.resolved_commander} device info --serialno {jlink_serial}"
+        ]
+
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        print("Device info:")
+        print(result.stdout)
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Device info failed:\n{result.stderr}")
+
+        # Extract chip from: Part Number : EFR32MG26B510F3200IM68
+        m = re.search(r"Part Number\s*:\s*([A-Za-z0-9_]+)", result.stdout)
+        if not m:
+            raise RuntimeError("Could not extract device name from Commander output.")
+
+        device_name = m.group(1).strip()
+        print("Detected Device Name:", device_name)
+        return device_name
+
+    # ----------------------------------------------------------
+    def _flash_firmware(self, ssh_target: str, remote_path: str, jlink_serial: str, device_name: str):
+        """
+        Correct flash syntax:
+            commander flash <file> --serialno <SN> --device <PART> -v
+        """
+        cmd = [
+            "ssh", 
+            "-o", "ConnectTimeout=30", 
+            "-o", "ConnectionAttempts=5",
+            ssh_target,
+            f"{self.resolved_commander} flash \"{remote_path}\" "
+            f"--serialno {jlink_serial} "
+            f"--device {device_name} -v"
+        ]
+
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        print("Flash Output:")
+        print(result.stdout)
+
+        if result.returncode != 0:
+            print("Flash Errors:\n", result.stderr)
+            raise RuntimeError("Flash failed.")
