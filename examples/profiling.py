@@ -66,38 +66,3 @@ except Exception as e:
     # but the history.log will STILL upload to the volume path.
     print(f"  [!] Profiling failed -> {e}")
 
-
-# =========================================================
-# USE CASE B: Real Hardware Profiling
-# =========================================================
-# Uncomment the block below if a SiLabs Board is connected via USB.
-# ---------------------------------------------------------
-# print("\n--- [B] Real Hardware Profiling ---")
-# try:
-#     result = model.profile(
-#         model_path=model_path,
-#         device_id="440339411",         # OPTIONAL: J-Link Serial Number
-#         accelerator="mvpv1",           # OPTIONAL: Target NPU version
-#         platform="brd2605",            # OPTIONAL: Specific Dev Kit
-#         weights_paging=False,          # OPTIONAL: Enable for large models
-#         timeout=600                    # OPTIONAL: Max seconds to wait
-#     )
-#     print(f"  ✓ Hardware Arena Size: {result.arena_size_kb:.1f} KB")
-#     print(f"  ✓ Hardware Total MACs: {result.total_macs:,}")
-# except Exception as e:
-#     print(f"  [!] Hardware profiling failed: {e}")
-
-
-# =========================================================
-# USE CASE C: Launching the Web GUI Dashboard
-# =========================================================
-# Opens the interactive Profiler dashboard in your browser.
-# ---------------------------------------------------------
-# print("\n--- [C] Visual Dashboard ---")
-# model.profile(model_path=model_path, gui=True)
-
-
-
-
-
-
