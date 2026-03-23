@@ -1,5 +1,5 @@
 """
-SiLabs MLOps - Universal Logger
+Silicon Labs MLOps SDK - Universal Logger
 
 Handles local history storage and direct HTTP REST API streaming
 to Azure Databricks Delta Tables via OAuth.

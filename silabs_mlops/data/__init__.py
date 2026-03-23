@@ -1,5 +1,5 @@
 """
-SiLabs MLOps Data Module
+Silicon Labs MLOps SDK - Data Module
 
 Simple API for ingesting IoT sensor data to Databricks Delta Lake via ZeroBus.
 
