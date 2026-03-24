@@ -16,7 +16,7 @@ The entire MLOps package (`data`, `model`, `logs`) uses a **single global config
 # Quick Start
 
 ## 1. Configure Global Credentials
-This initializes the global configuration shared across the entire library. You can initialize this configuration either by fetching your system's environment variables (using `os.getenv()`) inside `data.config()` or by providing the strings directly.
+This initializes the global configuration shared across the entire library. Refer to the [Databricks Setup Guide](databricks_setup_guide.md) for obtaining your ZeroBus and Databricks credentials. You can initialize this configuration either by fetching your system's environment variables (using `os.getenv()`) inside `data.config()` or by providing the strings directly.
 
 #### **Option 1: Using Environment Variables**
 ```python
