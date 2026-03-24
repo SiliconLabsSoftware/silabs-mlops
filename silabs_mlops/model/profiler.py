@@ -63,12 +63,11 @@ class DeviceInfo:
 
 class NPUProfiler:
     """
-    Integrates the Silicon Labs NPU toolkit model profiler (mvp_profiler.exe/ mvp_profiler for linux)
+    Integrates the Silicon Labs NPU toolkit model profiler (mvp_profiler/mvp_profiler.exe)
     into the SiLabs MLOps CLI.
-
     """
 
-    # Default names to try for the mvp_profiler binary
+    # Candidate binary names for mvp_profiler
     _PROFILER_CANDIDATES = ["mvp_profiler", "mvp_profiler.exe"]
 
     def __init__(self):
@@ -189,9 +188,8 @@ class NPUProfiler:
 
         """
         devices = []
-        # Match lines with device entries. We use a generic prefix match ([^\w\s]+) 
-        # The line sometimes starts with bullets/arrows (e.g., punctuation). 
-        # [^\w\s]+ consumes any such non-alphanumeric, non-space prefix.
+        # Match lines with device entries using a generic prefix pattern.
+        # The prefix non-alphanumeric characters (bullets/arrows) are consumed by [^\w\s]+.
         pattern = re.compile(r'[^\w\s]+\s+\S+\s+\[\s*(\S+)\s+(\S+)\s+(\d{7,})\s+(\S+)', re.UNICODE)
         for line in output.splitlines():
             m = pattern.search(line)
@@ -207,7 +205,7 @@ class NPUProfiler:
                     raw=line.strip()
                 ))
             else:
-                # Simpler fallback: look for long numeric IDs (device IDs are typically 9 digits)
+                # Fallback: Identify standard 9-digit numeric device IDs.
                 ids = re.findall(r'\b(\d{7,12})\b', line)
                 for dev_id in ids:
                     if not any(d.device_id == dev_id for d in devices):
@@ -277,7 +275,7 @@ class NPUProfiler:
         profiler_cmd = self._resolve_profiler(profiler_path)
         print(f"Using profiler command: {' '.join(profiler_cmd)}")
 
-        # Determine output directory (Temp dir if volume_path is set)
+        # Resolve output directory (uses a temporary directory if volume_path is specified)
         is_temp_dir = False
         if volume_path:
             output_dir = tempfile.mkdtemp(prefix="npu_prof_")
@@ -290,8 +288,7 @@ class NPUProfiler:
         if not gui:
             out_p.mkdir(parents=True, exist_ok=True)
 
-        # Build mvp_profiler command
-        # Usage: mvp_profiler [OPTIONS] [model]
+        # Construct the mvp_profiler command string
         cmd = list(profiler_cmd)
 
         if gui:
@@ -307,8 +304,8 @@ class NPUProfiler:
             if output_dir:
                 cmd += ["--output", str(out_p.absolute())]
 
-            # Device discovery / Selection
-            # If use_simulator is True, we don't add --device, so mvp_profiler runs locally.
+            # Device selection and discovery.
+            # Avoid appending --device if use_simulator is enabled to run locally.
             if not use_simulator:
                 if device_id:
                     cmd += ["--device", "--serial-number", device_id]
@@ -327,7 +324,7 @@ class NPUProfiler:
         print(f"{'='*60}\n")
         print(f"Running: {' '.join(cmd)}\n")
 
-        # Run profiler, streaming output
+        # Execute the profiler and stream the standard output
         history_file_path = out_p / "profiling_history.log"
         if not gui:
             print(f"Logging profiling history to: {history_file_path}\n")
@@ -338,17 +335,17 @@ class NPUProfiler:
                 # GUI server runs indefinitely unless interrupted
                 proc = subprocess.run(cmd, text=True, timeout=None)
             else:
-                # Stream output and save profiling history locally
+                # Stream output to the console and simultaneously log to the history file
                 with open(history_file_path, "w", encoding="utf-8") as history_file:
                     proc = subprocess.Popen(
                         cmd,
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT, # Merge stderr into stdout
+                        stderr=subprocess.STDOUT,  # Merge stderr stream into stdout
                         text=True,
                         bufsize=1
                     )
                     
-                    # Stream to console and history file simultaneously
+                    # Write line to console and flush to the log file
                     for line in proc.stdout:
                         print(line, end="")
                         history_file.write(line)
@@ -377,26 +374,26 @@ class NPUProfiler:
                 raise profiler_error
             return ProfileResult(model_name="GUI", model_path="", device_id="", output_dir="")
 
-        # Parse results from output directory (even if it failed, grab history log)
+        # Parse results from the output directory, capturing the history log even on failure
         result = self._collect_results(model_p, device_id or "auto", out_p)
         
-        # Upload to Databricks Volume if requested (even if it failed)
+        # Upload artifacts to Databricks Volume if configured, regardless of exit status
         if volume_path and not gui:
             remote_url = self._upload_to_volume(out_p, model_p.stem, volume_path)
             result.output_dir = remote_url
             if is_temp_dir:
                 shutil.rmtree(out_p, ignore_errors=True)
 
-        # Output the summary 
+        # Generate and display the profiling summary
         self._print_summary(result)
 
-        # Re-raise the error after we have uploaded and summarized the logs
+        # Re-raise profiler exceptions after logs are processed and uploaded
         if profiler_error:
             self.logger.log_model_profiling(
                 message=f"Profiling failed for {model_p.name} - Exit code {proc.returncode if 'proc' in locals() else 'Unknown'}",
                 level="Error"
             )
-            # Inject the remote URL so the user knows where the logs are
+            # Include the remote URL in the error message for log visibility
             raise RuntimeError(f"{profiler_error}\nFailed profiling logs uploaded to: {result.output_dir}")
 
         self.logger.log_model_profiling(
@@ -439,7 +436,7 @@ class NPUProfiler:
             
             # 2. Upload Files
             print(f"\n[dbx] Uploading results to Databricks Volume: {remote_base}")
-            uploaded = 0
+            uploaded: int = 0
             for root, _, files in os.walk(local_dir):
                 for f in files:
                     local_f = Path(root) / f
@@ -447,7 +444,7 @@ class NPUProfiler:
                     dest_f = f"{remote_base}/{rel_f}"
                     dest_dir = str(Path(dest_f).parent.as_posix())
                     
-                    # Mkdir
+                    # Create remote directory structure
                     req_dir = requests.put(
                         f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/api/2.0/fs/directories{dest_dir}",
                         headers={"Authorization": f"Bearer {token}"}
@@ -455,7 +452,7 @@ class NPUProfiler:
                     if req_dir.status_code not in (200, 201, 204):
                         continue
                         
-                    # Put File
+                    # Upload file object
                     with open(local_f, "rb") as file_bytes:
                         req_put = requests.put(
                             f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/api/2.0/fs/files{dest_f}",
