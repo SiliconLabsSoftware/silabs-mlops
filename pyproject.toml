@@ -34,6 +34,6 @@ managed = true
 dev = ["pytest>=7.0.0"]
 
 [tool.pytest.ini_options]
+addopts = "--cov=silabs_mlops.model --cov-report=term-missing"
 testpaths = ["tests"]
-addopts = "-v"
 pythonpath = ["."]

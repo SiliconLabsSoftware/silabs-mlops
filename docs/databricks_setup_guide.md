@@ -98,10 +98,9 @@ You can verify these in **Admin Console → Groups → [Your Group] → Entitlem
 
 ![alt text](images/access.png)
 
-1. The workspace should be `zerobus enabled` to ingest data using ZeroBus. If it is not enabled the ingestion will fail.
+2. The workspace should be `zerobus enabled` to ingest data using ZeroBus. If it is not enabled the ingestion will fail.  
 
 #### Verify Zerobus Connector Availability
-
 The Zerobus Ingest Connector should appear by default in your Databricks workspace under:
 Add Data → Databricks Connectors → Zerobus Ingest
 

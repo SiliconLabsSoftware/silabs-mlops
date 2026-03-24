@@ -1,12 +1,10 @@
 """
 silabs_mlops.model
-Unified public API for deployment and profiling.
+Unified public API for profiling.
 """
 
 from typing import Optional
 
-from .config import DeployConfig
-from .deployer import RPiDeployer
 from .profiler import NPUProfiler, ProfileResult, LayerProfile
 
 # Singleton profiler instance used by the package-level `profile()` helper.
@@ -52,9 +50,6 @@ def profile(
 
 
 __all__ = [
-    # Deployment
-    "DeployConfig",
-    "RPiDeployer",
     # Profiler
     "NPUProfiler",
     "ProfileResult",

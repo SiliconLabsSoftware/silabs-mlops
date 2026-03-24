@@ -70,8 +70,6 @@ class NPUProfiler:
 
     # Default names to try for the mvp_profiler binary
     _PROFILER_CANDIDATES = ["mvp_profiler", "mvp_profiler.exe"]
-    # Internal sml candidates as fallback
-    _SML_CANDIDATES = ["sml", "sml.exe"]
 
     def __init__(self):
         """Initialize the profiler and the centralized CLI logger."""
@@ -118,28 +116,30 @@ class NPUProfiler:
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             pass
 
-        # 4. Fallback to sml
-        for name in self._SML_CANDIDATES:
-            found = shutil.which(name)
-            if found:
-                return [found]
+        # 4. Fallback: Search relative to sdm
+        sdm_path = shutil.which("sdm")
+        if sdm_path:
+            sdm_bin = Path(sdm_path)
+            for name in self._PROFILER_CANDIDATES:
+                candidate = sdm_bin.parent / name
+                if candidate.is_file():
+                    return [str(candidate)]
 
         raise EnvironmentError(
             "Silicon Labs NPU Toolkit (mvp_profiler) not found.\n"
-            "Please ensure npu_toolkit is installed or mvp_profiler is in your PATH.\n"
+            "Please ensure npu_toolkit is installed or mvp_profiler is in your PATH."
         )
 
     def _resolve_sdm(self, profiler_path: Optional[str] = None) -> Optional[str]:
         """Resolve the sdm binary path (optional, for device discovery)."""
-        # sdm may live alongside sml, try to derive its location
-        sml_try = self._resolve_binary(self._SML_CANDIDATES, profiler_path)
-        if sml_try:
-            sml_dir = Path(sml_try).parent
-            for name in self._SDM_CANDIDATES:
-                sdm_candidate = sml_dir / name
-                if sdm_candidate.is_file():
-                    return str(sdm_candidate)
-        return self._resolve_binary(self._SDM_CANDIDATES)
+        if profiler_path:
+            p = Path(profiler_path)
+            if p.is_file():
+                for name in ["sdm", "sdm.exe"]:
+                    sdm_candidate = p.parent / name
+                    if sdm_candidate.is_file():
+                        return str(sdm_candidate)
+        return self._resolve_binary(["sdm", "sdm.exe"])
 
     def discover_devices(self, profiler_path: Optional[str] = None) -> List[DeviceInfo]:
         """
@@ -150,9 +150,9 @@ class NPUProfiler:
         """
         sdm = self._resolve_sdm(profiler_path)
         if not sdm:
-            # Fallback: try sml itself (newer versions may support device listing)
-            print("WARNING: sdm binary not found. Cannot auto-discover devices.")
-            print("Find your device ID manually with: sdm adapter list")
+            msg = "sdm binary not found. Cannot auto-discover devices. Please find your device ID manually."
+            print(f"WARNING: {msg}")
+            self.logger.log_model_profiling(message=msg, level="Warning")
             return []
 
         try:
@@ -165,10 +165,14 @@ class NPUProfiler:
             output = result.stdout + result.stderr
             return self._parse_adapter_list(output)
         except subprocess.TimeoutExpired:
-            print("WARNING: Device discovery timed out.")
+            msg = "Device discovery timed out."
+            print(f"WARNING: {msg}")
+            self.logger.log_model_profiling(message=msg, level="Warning")
             return []
         except Exception as e:
-            print(f"WARNING: Device discovery failed: {e}")
+            msg = f"Device discovery failed: {e}"
+            print(f"WARNING: {msg}")
+            self.logger.log_model_profiling(message=msg, level="Error")
             return []
 
     def _parse_adapter_list(self, output: str) -> List[DeviceInfo]:
@@ -249,7 +253,7 @@ class NPUProfiler:
 
         Raises:
             FileNotFoundError: If model_path does not exist.
-            EnvironmentError:  If sml binary is not found.
+            EnvironmentError:  If profiler binary is not found.
             RuntimeError:      If the profiler subprocess fails.
         """
         # Validate model file
@@ -472,7 +476,7 @@ class NPUProfiler:
     def _collect_results(self, model_p: Path, device_id: str, out_p: Path) -> ProfileResult:
         """
         Collect and parse profiling artifacts from the output directory.
-        sml may create a timestamped subdirectory; search recursively.
+        The profiler may create a timestamped subdirectory; search recursively.
         """
         result = ProfileResult(
             model_name=model_p.stem,
@@ -481,7 +485,7 @@ class NPUProfiler:
             output_dir=str(out_p)
         )
 
-        # Search for output files (sml may nest them in a timestamped subdir)
+        # Search for primary output files (may be nested in a timestamped subdir)
         def find_file(name: str) -> Optional[Path]:
             matches = list(out_p.rglob(name))
             return matches[0] if matches else None
@@ -534,7 +538,9 @@ class NPUProfiler:
                 layers_raw = raw.get("layers") or raw.get("per_layer") or []
                 result.layers = self._parse_layers(layers_raw)
             except Exception as e:
-                print(f"NOTE: Could not fully parse report file {report_file.name}: {e}")
+                msg = f"Could not fully parse report file {report_file.name}: {e}"
+                print(f"NOTE: {msg}")
+                self.logger.log_model_profiling(message=msg, level="Warning")
 
         # Fallback: parse summary.txt for arena/MACs
         if summary_file and summary_file.exists() and not result.arena_size_kb:
@@ -557,8 +563,9 @@ class NPUProfiler:
                     acc_stalls=int(lr.get("acc_stalls", lr.get("acc", {}).get("stalls", 0))),
                     time_ms=float(lr.get("time_ms", lr.get("time", 0))),
                 ))
-            except (KeyError, TypeError, ValueError):
-                pass
+            except (KeyError, TypeError, ValueError) as e:
+                # Allow the error to propagate so the caller can log it natively
+                raise ValueError(f"Failed to parse layer profile: {e}") from e
         return layers
 
     def _parse_summary_txt(self, summary_file: Path, result: ProfileResult):
@@ -589,8 +596,9 @@ class NPUProfiler:
             m = re.search(r'(?:Board|Platform)\s*[:\|]\s*(\S+)', text, re.IGNORECASE)
             if m:
                 result.board = m.group(1)
-        except Exception:
-            pass
+        except Exception as e:
+            msg = f"Failed to parse summary.txt: {e}"
+            self.logger.log_model_profiling(message=msg, level="Warning")
 
     def _print_summary(self, result: ProfileResult):
         """Print a human-readable summary of profiling results."""

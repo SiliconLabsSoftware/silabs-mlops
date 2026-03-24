@@ -7,7 +7,7 @@ With the unified configuration design:
 
 > **Call `data.config()` once. The model module automatically uses the same credentials for cloud uploads and logging.**
 
-This makes the profiling workflow simple, secure, and fully integrated with Databricks.
+This makes the profiling workflow simple, secure, and fully integrated with Databricks. For workspace and credential setup details, see the [Databricks Setup Guide](databricks_setup_guide.md).
 
 ---
 
@@ -129,7 +129,7 @@ Every profiling session generates a unique output directory (locally or in the c
 ---
 
 ## Databricks Volume Upload
-You can automatically upload all profiling results to a Databricks Volume by providing a `volume_path`.
+You can automatically upload all profiling results to a Databricks Volume by providing a `volume_path`. For volume permissions and creation steps, see the [Databricks Setup Guide](databricks_setup_guide.md).
 
 ```python
 from silabs_mlops import model
