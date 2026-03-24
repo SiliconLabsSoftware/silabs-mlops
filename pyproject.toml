@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "silabs-mlops-model-training"
+version = "0.1.0"
+description = "Pipeline for training optimized models using a Teacher-Student knowledge distillation approach."
+readme = "docs/custom_model_training_guide.md"
+requires-python = ">=3.8"
+dependencies = [
+    "silabs-mltk",
+    "audiomentations",
+    "noisereduce",
+    "pyloudnorm",
+    "librosa",
+    "tensorflow",
+    "scikit-learn",
+    "tensorflow-model-optimization"
+]
