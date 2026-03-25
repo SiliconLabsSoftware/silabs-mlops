@@ -1,6 +1,7 @@
-'''
-Provides a Python wrapper around Silicon Labs' NPU profiler for running and parsing model profiling.
-'''
+"""
+Provides a Python wrapper around Silicon Labs' ML profiler for running and parsing model profiling.
+"""
+
 import os
 import json
 import yaml
@@ -16,9 +17,11 @@ import requests
 from sml.ops.config import Config
 from sml.ops.logs import Logger
 
+
 @dataclass
 class LayerProfile:
     """Profiling data for a single model layer."""
+
     name: str
     input_shape: str
     output_shape: str
@@ -31,7 +34,8 @@ class LayerProfile:
 
 @dataclass
 class ProfileResult:
-    """Structured result from an NPU profiling session."""
+    """Structured result from an ML Model profiling session."""
+
     model_name: str
     model_path: str
     device_id: str
@@ -55,6 +59,7 @@ class ProfileResult:
 @dataclass
 class DeviceInfo:
     """Information about a connected Silicon Labs development board."""
+
     device_id: str
     board: Optional[str] = None
     connection_type: Optional[str] = None
@@ -63,7 +68,7 @@ class DeviceInfo:
 
 class NPUProfiler:
     """
-    Integrates the Silicon Labs NPU toolkit model profiler (mvp_profiler/mvp_profiler.exe)
+    Integrates the Silicon Labs ML model profiler (mvp_profiler/mvp_profiler.exe)
     into the SiLabs MLOps CLI.
     """
 
@@ -74,7 +79,9 @@ class NPUProfiler:
         """Initialize the profiler and the centralized CLI logger."""
         self.logger = Logger()
 
-    def _resolve_binary(self, candidates: List[str], override: Optional[str] = None) -> Optional[str]:
+    def _resolve_binary(
+        self, candidates: List[str], override: Optional[str] = None
+    ) -> Optional[str]:
         """Resolve a binary path, using override or searching PATH."""
         if override:
             p = Path(override)
@@ -109,10 +116,14 @@ class NPUProfiler:
                 ["python", "-m", "npu_toolkit.profiler", "--version"],
                 capture_output=True,
                 check=True,
-                timeout=5
+                timeout=5,
             )
             return ["python", "-m", "npu_toolkit.profiler"]
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        except (
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+        ):
             pass
 
         # 4. Fallback: Search relative to sdm
@@ -156,10 +167,7 @@ class NPUProfiler:
 
         try:
             result = subprocess.run(
-                [sdm, "adapter", "list"],
-                capture_output=True,
-                text=True,
-                timeout=15
+                [sdm, "adapter", "list"], capture_output=True, text=True, timeout=15
             )
             output = result.stdout + result.stderr
             return self._parse_adapter_list(output)
@@ -190,7 +198,9 @@ class NPUProfiler:
         devices = []
         # Match lines with device entries using a generic prefix pattern.
         # The prefix non-alphanumeric characters (bullets/arrows) are consumed by [^\w\s]+.
-        pattern = re.compile(r'[^\w\s]+\s+\S+\s+\[\s*(\S+)\s+(\S+)\s+(\d{7,})\s+(\S+)', re.UNICODE)
+        pattern = re.compile(
+            r"[^\w\s]+\s+\S+\s+\[\s*(\S+)\s+(\S+)\s+(\d{7,})\s+(\S+)", re.UNICODE
+        )
         for line in output.splitlines():
             m = pattern.search(line)
             if m:
@@ -198,21 +208,20 @@ class NPUProfiler:
                 _wstk = m.group(2)
                 device_id = m.group(3)
                 board = m.group(4)
-                devices.append(DeviceInfo(
-                    device_id=device_id,
-                    board=board,
-                    connection_type=conn_type,
-                    raw=line.strip()
-                ))
+                devices.append(
+                    DeviceInfo(
+                        device_id=device_id,
+                        board=board,
+                        connection_type=conn_type,
+                        raw=line.strip(),
+                    )
+                )
             else:
                 # Fallback: Identify standard 9-digit numeric device IDs.
-                ids = re.findall(r'\b(\d{7,12})\b', line)
+                ids = re.findall(r"\b(\d{7,12})\b", line)
                 for dev_id in ids:
                     if not any(d.device_id == dev_id for d in devices):
-                        devices.append(DeviceInfo(
-                            device_id=dev_id,
-                            raw=line.strip()
-                        ))
+                        devices.append(DeviceInfo(device_id=dev_id, raw=line.strip()))
         return devices
 
     def profile(
@@ -227,7 +236,7 @@ class NPUProfiler:
         platform: Optional[str] = None,
         weights_paging: bool = False,
         use_simulator: bool = False,
-        volume_path: Optional[str] = None
+        volume_path: Optional[str] = None,
     ) -> ProfileResult:
         """
         Profile a model using the MVP Profiler (mvp_profiler).
@@ -265,11 +274,8 @@ class NPUProfiler:
             action_msg += f" on device ID {device_id}"
         elif use_simulator:
             action_msg += " (Local Simulation)"
-        
-        self.logger.log_model_profiling(
-            message=action_msg,
-            level="Info"
-        )
+
+        self.logger.log_model_profiling(message=action_msg, level="Info")
 
         # Resolve profiler command
         profiler_cmd = self._resolve_profiler(profiler_path)
@@ -282,8 +288,10 @@ class NPUProfiler:
             is_temp_dir = True
         elif not output_dir:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_dir = str(Path.cwd() / "profiling_results" / f"{model_p.stem or 'gui'}-{ts}")
-        
+            output_dir = str(
+                Path.cwd() / "profiling_results" / f"{model_p.stem or 'gui'}-{ts}"
+            )
+
         out_p = Path(output_dir)
         if not gui:
             out_p.mkdir(parents=True, exist_ok=True)
@@ -315,13 +323,13 @@ class NPUProfiler:
             else:
                 print("  Mode:      Simulator (Local)")
 
-        print(f"\n{'='*60}")
-        print(f"  SILICON LABS NPU MODEL PROFILER")
-        print(f"{'='*60}")
+        print(f"\n{'=' * 60}")
+        print(f"  SILICON LABS ML MODEL PROFILER")
+        print(f"{'=' * 60}")
         print(f"  Model:     {model_p.name}")
         print(f"  Device ID: {device_id}")
         print(f"  Output:    {output_dir}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
         print(f"Running: {' '.join(cmd)}\n")
 
         # Execute the profiler and stream the standard output
@@ -342,29 +350,31 @@ class NPUProfiler:
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,  # Merge stderr stream into stdout
                         text=True,
-                        bufsize=1
+                        bufsize=1,
                     )
-                    
+
                     # Write line to console and flush to the log file
                     for line in proc.stdout:
                         print(line, end="")
                         history_file.write(line)
                         history_file.flush()
-                    
+
                     try:
                         proc.wait(timeout=timeout)
                     except subprocess.TimeoutExpired:
                         proc.kill()
                         proc.wait()
                         raise subprocess.TimeoutExpired(cmd, timeout)
-                
+
                 if proc.returncode != 0:
                     profiler_error = RuntimeError(
                         f"Profiler exited with code {proc.returncode}.\n"
                         "Check tool logs and hardware connection."
                     )
         except subprocess.TimeoutExpired:
-            profiler_error = RuntimeError(f"Profiler timed out after {timeout} seconds.")
+            profiler_error = RuntimeError(
+                f"Profiler timed out after {timeout} seconds."
+            )
         except Exception as e:
             if not profiler_error:
                 profiler_error = RuntimeError(f"Failed to launch profiler: {e}")
@@ -372,11 +382,13 @@ class NPUProfiler:
         if gui:
             if profiler_error:
                 raise profiler_error
-            return ProfileResult(model_name="GUI", model_path="", device_id="", output_dir="")
+            return ProfileResult(
+                model_name="GUI", model_path="", device_id="", output_dir=""
+            )
 
         # Parse results from the output directory, capturing the history log even on failure
         result = self._collect_results(model_p, device_id or "auto", out_p)
-        
+
         # Upload artifacts to Databricks Volume if configured, regardless of exit status
         if volume_path and not gui:
             remote_url = self._upload_to_volume(out_p, model_p.stem, volume_path)
@@ -391,23 +403,31 @@ class NPUProfiler:
         if profiler_error:
             self.logger.log_model_profiling(
                 message=f"Profiling failed for {model_p.name} - Exit code {proc.returncode if 'proc' in locals() else 'Unknown'}",
-                level="Error"
+                level="Error",
             )
             # Include the remote URL in the error message for log visibility
-            raise RuntimeError(f"{profiler_error}\nFailed profiling logs uploaded to: {result.output_dir}")
+            raise RuntimeError(
+                f"{profiler_error}\nFailed profiling logs uploaded to: {result.output_dir}"
+            )
 
         self.logger.log_model_profiling(
             message=f"Successfully profiled {model_p.name} - Arena: {result.arena_size_kb or 0} KB, MACs: {result.total_macs or 0}",
-            level="Success"
+            level="Success",
         )
         return result
 
-    def _upload_to_volume(self, local_dir: Path, model_stem: str, custom_volume_path: str) -> str:
+    def _upload_to_volume(
+        self, local_dir: Path, model_stem: str, custom_volume_path: str
+    ) -> str:
         """Uploads profiling artifacts to Databricks Unity Catalog Volume."""
-        if not (Config.ZEROBUS_WORKSPACE_URL and Config.ZEROBUS_CLIENT_ID and Config.ZEROBUS_CLIENT_SECRET):
+        if not (
+            Config.ZEROBUS_WORKSPACE_URL
+            and Config.ZEROBUS_CLIENT_ID
+            and Config.ZEROBUS_CLIENT_SECRET
+        ):
             print("[warn] Missing ZEROBUS credentials. Cannot upload to Volumes.")
             return str(local_dir)
-        
+
         # Normalize DBX path
         p = str(custom_volume_path).replace("\\", "/")
         parts = [seg for seg in p.split("/") if seg]
@@ -415,10 +435,10 @@ class NPUProfiler:
         if not p.startswith("/Volumes/"):
             print("[warn] Volume path must start with /Volumes/. Skipping upload.")
             return str(local_dir)
-        
+
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         remote_base = f"{p}/{model_stem}-{ts}"
-        
+
         try:
             # 1. Get OAuth Token
             token_url = f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/oidc/v1/token"
@@ -433,7 +453,7 @@ class NPUProfiler:
             )
             r.raise_for_status()
             token = r.json()["access_token"]
-            
+
             # 2. Upload Files
             print(f"\n[dbx] Uploading results to Databricks Volume: {remote_base}")
             uploaded: int = 0
@@ -443,34 +463,39 @@ class NPUProfiler:
                     rel_f = local_f.relative_to(local_dir).as_posix()
                     dest_f = f"{remote_base}/{rel_f}"
                     dest_dir = str(Path(dest_f).parent.as_posix())
-                    
+
                     # Create remote directory structure
                     req_dir = requests.put(
                         f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/api/2.0/fs/directories{dest_dir}",
-                        headers={"Authorization": f"Bearer {token}"}
+                        headers={"Authorization": f"Bearer {token}"},
                     )
                     if req_dir.status_code not in (200, 201, 204):
                         continue
-                        
+
                     # Upload file object
                     with open(local_f, "rb") as file_bytes:
                         req_put = requests.put(
                             f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/api/2.0/fs/files{dest_f}",
-                            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/octet-stream"},
+                            headers={
+                                "Authorization": f"Bearer {token}",
+                                "Content-Type": "application/octet-stream",
+                            },
                             data=file_bytes,
-                            params={"overwrite": "true"}
+                            params={"overwrite": "true"},
                         )
                         if req_put.status_code in (200, 204):
                             uploaded += 1
-                            
+
             print(f"[dbx] Successfully uploaded {uploaded} files.")
             return remote_base
-            
+
         except Exception as e:
             print(f"[warn] Volume upload failed: {e}")
             return str(local_dir)
 
-    def _collect_results(self, model_p: Path, device_id: str, out_p: Path) -> ProfileResult:
+    def _collect_results(
+        self, model_p: Path, device_id: str, out_p: Path
+    ) -> ProfileResult:
         """
         Collect and parse profiling artifacts from the output directory.
         The profiler may create a timestamped subdirectory; search recursively.
@@ -479,7 +504,7 @@ class NPUProfiler:
             model_name=model_p.stem,
             model_path=str(model_p),
             device_id=device_id,
-            output_dir=str(out_p)
+            output_dir=str(out_p),
         )
 
         # Search for primary output files (may be nested in a timestamped subdir)
@@ -491,10 +516,12 @@ class NPUProfiler:
         summary_file = find_file(f"{model_p.stem}-profiling_summary.txt")
         report_file = find_file(f"{model_p.stem}-profiling_results.yaml")
         history_log_file = find_file("profiling_history.log")
-        
+
         # Fallbacks for generic names
-        if not summary_file: summary_file = find_file("summary.txt")
-        if not report_file: report_file = find_file("report.json") or find_file("results.yaml")
+        if not summary_file:
+            summary_file = find_file("summary.txt")
+        if not report_file:
+            report_file = find_file("report.json") or find_file("results.yaml")
 
         if summary_file:
             result.summary_txt_path = str(summary_file)
@@ -511,27 +538,31 @@ class NPUProfiler:
                         raw = yaml.safe_load(f)
                     else:
                         raw = json.load(f)
-                
+
                 result.raw_report = raw
                 # Extract common fields (structure may vary by toolkit version)
                 # Try multiple keys for memory/arena size
                 arena_bytes = (
-                    raw.get("arena_size_kb", 0) * 1024 or 
-                    raw.get("arena_size", 0) or 
-                    raw.get("region_sizes", {}).get("sram", 0) or 
-                    raw.get("runtime_buffer_size", 0)
+                    raw.get("arena_size_kb", 0) * 1024
+                    or raw.get("arena_size", 0)
+                    or raw.get("region_sizes", {}).get("sram", 0)
+                    or raw.get("runtime_buffer_size", 0)
                 )
                 result.arena_size_kb = arena_bytes / 1024 if arena_bytes else 0
-                
+
                 # Try multiple keys for MACs
                 result.total_macs = (
-                    raw.get("total_macs") or 
-                    raw.get("macs") or 
-                    raw.get("multiply_accumulate_count")
+                    raw.get("total_macs")
+                    or raw.get("macs")
+                    or raw.get("multiply_accumulate_count")
                 )
-                
-                result.board = raw.get("board") or raw.get("device", {}).get("board") or raw.get("platform")
-                
+
+                result.board = (
+                    raw.get("board")
+                    or raw.get("device", {}).get("board")
+                    or raw.get("platform")
+                )
+
                 layers_raw = raw.get("layers") or raw.get("per_layer") or []
                 result.layers = self._parse_layers(layers_raw)
             except Exception as e:
@@ -550,16 +581,26 @@ class NPUProfiler:
         layers = []
         for lr in layers_raw:
             try:
-                layers.append(LayerProfile(
-                    name=lr.get("name", lr.get("layer", "?")),
-                    input_shape=str(lr.get("input_shape", lr.get("input", "?"))),
-                    output_shape=str(lr.get("output_shape", lr.get("output", "?"))),
-                    mcu_cycles=int(lr.get("mcu_cycles", lr.get("mcu", {}).get("cycles", 0))),
-                    mcu_stalls=int(lr.get("mcu_stalls", lr.get("mcu", {}).get("stalls", 0))),
-                    acc_cycles=int(lr.get("acc_cycles", lr.get("acc", {}).get("cycles", 0))),
-                    acc_stalls=int(lr.get("acc_stalls", lr.get("acc", {}).get("stalls", 0))),
-                    time_ms=float(lr.get("time_ms", lr.get("time", 0))),
-                ))
+                layers.append(
+                    LayerProfile(
+                        name=lr.get("name", lr.get("layer", "?")),
+                        input_shape=str(lr.get("input_shape", lr.get("input", "?"))),
+                        output_shape=str(lr.get("output_shape", lr.get("output", "?"))),
+                        mcu_cycles=int(
+                            lr.get("mcu_cycles", lr.get("mcu", {}).get("cycles", 0))
+                        ),
+                        mcu_stalls=int(
+                            lr.get("mcu_stalls", lr.get("mcu", {}).get("stalls", 0))
+                        ),
+                        acc_cycles=int(
+                            lr.get("acc_cycles", lr.get("acc", {}).get("cycles", 0))
+                        ),
+                        acc_stalls=int(
+                            lr.get("acc_stalls", lr.get("acc", {}).get("stalls", 0))
+                        ),
+                        time_ms=float(lr.get("time_ms", lr.get("time", 0))),
+                    )
+                )
             except (KeyError, TypeError, ValueError) as e:
                 # Allow the error to propagate so the caller can log it natively
                 raise ValueError(f"Failed to parse layer profile: {e}") from e
@@ -570,27 +611,38 @@ class NPUProfiler:
         try:
             text = summary_file.read_text(errors="replace")
             # Arena size
-            m = re.search(r'(?:Arena size|Runtime buffer size.*?)\s*[:\|]\s*([\d.]+)\s*([KMG]?B|k)', text, re.IGNORECASE)
+            m = re.search(
+                r"(?:Arena size|Runtime buffer size.*?)\s*[:\|]\s*([\d.]+)\s*([KMG]?B|k)",
+                text,
+                re.IGNORECASE,
+            )
             if m:
                 val = float(m.group(1))
                 unit = m.group(2).lower()
-                if unit == 'k' or unit.startswith('k'):
+                if unit == "k" or unit.startswith("k"):
                     result.arena_size_kb = val
-                elif unit.startswith('m'):
+                elif unit.startswith("m"):
                     result.arena_size_kb = val * 1024
-                else: # assumed bytes
+                else:  # assumed bytes
                     result.arena_size_kb = val / 1024
             # Total MACs
-            m = re.search(r'(?:Total.*?MACs?|Multiply-Accumulate Count)\s*[:\|]\s*([\d,.]+)\s*([KMG]?)', text, re.IGNORECASE)
+            m = re.search(
+                r"(?:Total.*?MACs?|Multiply-Accumulate Count)\s*[:\|]\s*([\d,.]+)\s*([KMG]?)",
+                text,
+                re.IGNORECASE,
+            )
             if m:
                 val_str = m.group(1).replace(",", "")
                 multiplier = 1
-                if m.group(2).upper() == 'K': multiplier = 1e3
-                elif m.group(2).upper() == 'M': multiplier = 1e6
-                elif m.group(2).upper() == 'G': multiplier = 1e9
+                if m.group(2).upper() == "K":
+                    multiplier = 1e3
+                elif m.group(2).upper() == "M":
+                    multiplier = 1e6
+                elif m.group(2).upper() == "G":
+                    multiplier = 1e9
                 result.total_macs = int(float(val_str) * multiplier)
             # Board
-            m = re.search(r'(?:Board|Platform)\s*[:\|]\s*(\S+)', text, re.IGNORECASE)
+            m = re.search(r"(?:Board|Platform)\s*[:\|]\s*(\S+)", text, re.IGNORECASE)
             if m:
                 result.board = m.group(1)
         except Exception as e:
@@ -599,9 +651,9 @@ class NPUProfiler:
 
     def _print_summary(self, result: ProfileResult):
         """Print a human-readable summary of profiling results."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  PROFILING COMPLETE")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"  Model:      {result.model_name}")
         if result.board:
             print(f"  Board:      {result.board}")
@@ -621,4 +673,4 @@ class NPUProfiler:
             print(f"    [OK] {Path(result.pftrace_path).name} (Perfetto trace)")
         if result.captured_packets_path:
             print(f"    [OK] captured-packets.json")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")

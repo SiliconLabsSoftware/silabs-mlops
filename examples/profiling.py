@@ -1,5 +1,5 @@
 """
-Silicon Labs NPU Model Profiling
+Silicon Labs ML Model Profiling
 ------------------------------------------------
 This shows you how to use the 'model' module to profile
 TFLite models for Silicon Labs hardware.
@@ -35,25 +35,25 @@ from sml.ops import model
 
 # 1. Basic Path Setup
 # Change this to your actual .tflite model path
-model_path = "workspace/outputs/my_model.tflite" 
+model_path = "workspace/outputs/my_model.tflite"
 
 # =========================================================
 # USE CASE A: Local Simulation & Cloud Upload
 # =========================================================
-'''
+"""
 Use this when you want to run model profiling on your PC 
 and upload all metrics, logic, and error history directly 
 to Databricks Volumes instead of saving them locally.
 
 MAKE SURE you have the mvp_profiler.exe in your PATH if you are running on Windows.
 & mvp_profiler(linux version) in databricks notebook PATH if you are running on databricks notebook.
-'''
+"""
 print("\n--- [A] Local Simulation & Cloud Upload ---")
 try:
     result = model.profile(
         model_path=model_path,
-        use_simulator=True,          # RUN LOCALLY ON PC
-        volume_path="/Volumes/my_catalog/my_schema/profiling_results" #-> add your volume path here
+        use_simulator=True,  # RUN LOCALLY ON PC
+        volume_path="/Volumes/my_catalog/my_schema/profiling_results",  # -> add your volume path here
     )
     # The result object contains all the extracted data:
     print(f"  ✓ Model:         {result.model_name}")
@@ -65,4 +65,3 @@ except Exception as e:
     # If there is a failure, the script will crash here
     # but the history.log will STILL upload to the volume path.
     print(f"  [!] Profiling failed -> {e}")
-
