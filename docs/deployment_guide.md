@@ -1,6 +1,24 @@
-# Raspberry Pi Deployment Guide (SiLabs MLOps)
+# Raspberry Pi Deployment Guide (Silicon-Labs-MLOps-CLI)
 
 This guide documents the procedures for environment setup and model deployment via remote Raspberry Pi.
+
+---
+
+## 0. Installation
+
+Depending on your role, there are two ways to install this CLI:
+
+### For End Users
+If you are just using the SDK to deploy models, install the core dependencies only. Test files and testing tools are deliberately excluded to keep the installation lightweight.
+```bash
+pip install .
+```
+
+### For Developers
+If you are modifying the code or running tests, you must include the `[test]` flag. This installs the core dependencies along with testing tools like `pytest` and `pytest-cov`. *(Note: The quotes are required on Windows).*
+```bash
+pip install -e ".[test]"
+```
 
 ---
 
@@ -75,11 +93,11 @@ To allow flashing over USB without root privileges:
 ### Via CLI
 Run the following command from your terminal:
 ```bash
-silabs-mlops-cli model deploy \
-  --uri ./bt_soc_thermometer_freertos.s37 \
-  --rpi-host 192.168.1.111 \
-  --rpi-user aimlraspberry \
-  --commander "/home/aimlraspberry/Desktop/SimplicityCommander-Linux/commander-cli/commander-cli"
+silabs-mlops model deploy \
+  --uri ./model_path.s37 \
+  --rpi-host <RPI_IP_ADDRESS> \
+  --rpi-user <USER_NAME> \
+  --commander "/home/<USER_NAME>/Desktop/SimplicityCommander-Linux/commander-cli/commander-cli"
 ```
 
 ### Via Python Script
@@ -89,12 +107,6 @@ Run the provided example in `examples/rpi_deployment.py`:
    ```bash
    python examples/rpi_deployment.py
    ```
-
-### Via Jupyter Notebook
-For an interactive experience, use the provided notebook:
-1. Open `examples/rpi_deployment.ipynb` using Jupyter Notebook or VS Code.
-2. Follow the cell-by-cell execution to flash your firmware.
-
 ---
 
 ## 4. Connectivity Troubleshooting
@@ -103,7 +115,7 @@ For an interactive experience, use the provided notebook:
 If deployment fails with an SSH timeout:
 1. **Verify Network Integrity**:
    ```bash
-   ping <RPI_IP>
+   ping <RPI_IP_ADDRESS>
    ```
    *Expected: < 50ms latency, 0% packet loss.*
 2. **Handle Poor Connections**:

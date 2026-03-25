@@ -40,7 +40,8 @@ def main():
 def deploy(uri, serial, commander, rpi_host, rpi_user, remote_path):
     """
     Deploy a firmware/model to a Silicon Labs device via Raspberry Pi (SCP + SSH).
-
+    
+    \b
     Steps:
       1) Uploads the local file to the Raspberry Pi.
       2) Runs Commander on the Pi to auto-detect J-Link and device part.
