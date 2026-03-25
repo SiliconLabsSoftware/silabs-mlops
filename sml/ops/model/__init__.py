@@ -1,5 +1,5 @@
 """
-silabs_mlops.model
+sml.ops.model
 Unified public API for profiling.
 """
 
@@ -22,10 +22,10 @@ def profile(
     platform: Optional[str] = None,
     weights_paging: bool = False,
     use_simulator: bool = False,
-    volume_path: Optional[str] = None
+    volume_path: Optional[str] = None,
 ) -> ProfileResult:
     """
-    Profile a model using the Silicon Labs NPU Toolkit (mvp_profiler).
+    Profile a model using the Silicon Labs MVP Profiler (mvp_profiler).
 
     Args:
         model_path:     Path to the .tflite or compiled .zip model file.
@@ -43,14 +43,21 @@ def profile(
         ProfileResult with parsed profiling metrics.
     """
     return _profiler.profile(
-        model_path, device_id, output_dir, profiler_path, gui,
-        timeout, accelerator, platform, weights_paging, use_simulator,
-        volume_path
+        model_path,
+        device_id,
+        output_dir,
+        profiler_path,
+        gui,
+        timeout,
+        accelerator,
+        platform,
+        weights_paging,
+        use_simulator,
+        volume_path,
     )
 
 
 __all__ = [
-    # Profiler
     "NPUProfiler",
     "ProfileResult",
     "LayerProfile",

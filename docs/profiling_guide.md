@@ -1,6 +1,6 @@
 # Model Profiling User Guide
 
-The Silicon Labs MLOps Model Profiling library provides a Python wrapper around the Silicon Labs NPU Toolkit (`mvp_profiler`). It allows users to profile compiled `.tflite` or `.zip` models on actual Silicon Labs hardware or in a local simulator.
+The Silicon Labs MLOps Model Profiling library provides a Python wrapper around the Silicon Labs MVP Profiler (`mvp_profiler`). It allows users to profile compiled `.tflite` or `.zip` models on actual Silicon Labs hardware or in a local simulator.
 
 
 With the unified configuration design:
@@ -22,11 +22,11 @@ This makes the profiling workflow simple, secure, and fully integrated with Data
 ---
 
 > [!IMPORTANT]
-> **Mandatory Tooling**: To perform profiling, the Silicon Labs **NPU Toolkit model profiler (mvp_profiler)** MUST be installed and added to your system's PATH. Without this tool, the profiling session will fail.
+> **Mandatory Tooling**: To perform profiling, the Silicon Labs **MVP Profiler model profiler (mvp_profiler)** MUST be installed and added to your system's PATH. Without this tool, the profiling session will fail.
 
 ## Installation & Path Setup
 
-The profiling library requires the Silicon Labs **NPU Toolkit model profiler (mvp_profiler)** to be installed on your workstation.
+The profiling library requires the Silicon Labs **MVP Profiler model profiler (mvp_profiler)** to be installed on your workstation.
 ### 1. Setup the NPU Profiler
 Ensure that you have downloaded and installed the mvp_profiler binary for your operating system (Windows or Linux).
 You can download both versions from the official Silicon Labs [GitHub repository](https://github.com/SiliconLabsSoftware/aiml-extension/tree/main/tool/profiler).
@@ -53,7 +53,7 @@ source ~/.bashrc  # or ~/.zshrc
 If you prefer not to add it to your PATH, you can provide the explicit path directly in your Python script:
 
 ```python
-from silabs_mlops import model
+from sml.ops import model
 
 result = model.profile(
     model_path="my_model.tflite",
@@ -71,7 +71,7 @@ Before profiling, ensure your **Global Configuration** is set. If you have alrea
 #### **Option 1: Using Environment Variables**
 ```python
 import os
-from silabs_mlops import data
+from sml.ops import data
 # Call this ONLY if you have NOT already configured the global credentials.
 # If you already called data.config() earlier (e.g., during data ingestion), you DO NOT need to call it again before profiling.
 data.config(
@@ -85,7 +85,7 @@ data.config(
 
 #### **Option 2: Direct Configuration**
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 data.config(
     server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
@@ -100,7 +100,7 @@ data.config(
 To profile a model on a connected Silicon Labs board:
 
 ```python
-from silabs_mlops import model
+from sml.ops import model
 
 # This automatically discovers the first connected board and profiles the model
 result = model.profile("models/my_model.tflite")
@@ -113,7 +113,7 @@ print(f"Total MACs: {result.total_macs}")
 To profile the model quickly on your local CPU without a connected board:
 
 ```python
-from silabs_mlops import model
+from sml.ops import model
 
 result = model.profile("models/my_model.tflite", use_simulator=True)
 ```
@@ -132,7 +132,7 @@ Every profiling session generates a unique output directory (locally or in the c
 You can automatically upload all profiling results to a Databricks Volume by providing a `volume_path`. For volume permissions and creation steps, see the [Databricks Setup Guide](databricks_setup_guide.md).
 
 ```python
-from silabs_mlops import model
+from sml.ops import model
 try:
     result = model.profile(
         model_path=model_path,
@@ -159,7 +159,7 @@ except Exception as e:
 For complex setups, you can specify custom paths and hardware targets.
 
 ```python
-from silabs_mlops import model
+from sml.ops import model
 
 result = model.profile(
     model_path="my_model.tflite",
@@ -178,12 +178,12 @@ Every profiling session is automatically logged. Even if the profiling fails, th
 
 **Via CLI:**
 ```bash
-silabs-mlops logs --type "Profiling"
+sml ops logs --type "Profiling"
 ```
 
 **Via Python Script:**
 ```python
-from silabs_mlops.logs import Logger
+from sml.ops.logs import Logger
 
 logger = Logger()
 # Filter only for profiling events

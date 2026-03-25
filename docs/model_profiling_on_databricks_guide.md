@@ -157,10 +157,10 @@ student_v = register_single_file(
 
 ## Running the Notebook
 
-1. **Initialization** – Run the first two cells to restart the Python engine and install the `silabs-mlops` library:
+1. **Initialization** – Run the first two cells to restart the Python engine and install the `sml-ops` library:
 
    ```python
-   %pip install silabs-mlops
+   %pip install sml-ops
    ```
 
 2. **Configuration** – Run `data.config()`

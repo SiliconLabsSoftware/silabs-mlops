@@ -13,8 +13,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import tempfile
 import requests
-from silabs_mlops.config import Config
-from silabs_mlops.logs import Logger
+from sml.ops.config import Config
+from sml.ops.logs import Logger
 
 @dataclass
 class LayerProfile:
@@ -125,7 +125,7 @@ class NPUProfiler:
                     return [str(candidate)]
 
         raise EnvironmentError(
-            "Silicon Labs NPU Toolkit (mvp_profiler) not found.\n"
+            "Silicon Labs MVP Profiler (mvp_profiler) not found.\n"
             "Please ensure npu_toolkit is installed or mvp_profiler is in your PATH."
         )
 
@@ -230,7 +230,7 @@ class NPUProfiler:
         volume_path: Optional[str] = None
     ) -> ProfileResult:
         """
-        Profile a model using the NPU Toolkit (mvp_profiler).
+        Profile a model using the MVP Profiler (mvp_profiler).
 
         Args:
             model_path:     Path to the .tflite or compiled .zip model file.

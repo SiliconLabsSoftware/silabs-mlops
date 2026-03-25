@@ -10,7 +10,7 @@ your Databricks/ZeroBus credentials ONCE using data.config().
 
 Example:
 
-    from silabs_mlops import data
+    from sml.ops import data
     data.config(
         server_endpoint="your-endpoint.cloud.databricks.com",
         workspace_url="https://your-workspace.cloud.databricks.com",
@@ -31,7 +31,7 @@ for:
 
 """
 
-from silabs_mlops import model
+from sml.ops import model
 
 # 1. Basic Path Setup
 # Change this to your actual .tflite model path

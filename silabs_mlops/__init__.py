@@ -1,1 +1,0 @@
-# Silicon Labs MLOps SDK
