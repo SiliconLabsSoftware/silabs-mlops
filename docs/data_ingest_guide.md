@@ -177,7 +177,8 @@ Every ingestion session is automatically logged. You can view the history of you
 
 **Via CLI:**
 ```bash
-silabs-mlops logs --type "Data Ingestion"
+sml ops logs --type "Data Ingestion"
+sml ops logs sync
 ```
 
 **Via Python Script:**

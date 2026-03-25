@@ -19,6 +19,7 @@ import click
 # Internal package imports
 from silabs_mlops.data.ingest import DataIngestor, IngestConfig
 from silabs_mlops.config import Config
+from silabs_mlops.logs import Logger
 
 
 @click.group()
@@ -92,6 +93,27 @@ def ingest(file, endpoint, workspace, table, client_id, client_secret):
     click.echo(
         "✓ Ingestion completed successfully." if success else "✗ Ingestion failed."
     )
+
+
+@ops.group(name="logs", invoke_without_command=True)
+@click.option(
+    "--type",
+    "event_type",
+    help='Filter logs by event type (for example: "Data Ingestion").',
+)
+@click.pass_context
+def logs(ctx, event_type):
+    """View and manage local log history."""
+    if ctx.invoked_subcommand is None:
+        logger = Logger()
+        logger.view(event_type=event_type)
+
+
+@logs.command(name="sync")
+def sync_logs():
+    """Sync local logs to Databricks."""
+    logger = Logger()
+    logger.sync_to_databricks()
 
 
 if __name__ == "__main__":

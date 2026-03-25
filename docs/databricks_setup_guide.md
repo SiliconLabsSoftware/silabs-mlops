@@ -236,7 +236,7 @@ Once created, ensure you provide your Service Principal with the necessary **GRA
 Once you have got all the credentials and permissions, you can configure the credentials in the following ways:
 
 ### Option 1 — Environment Variables 
-Set **Environment Variables** on your system. The CLI will automatically fetch these whenever you run CLI commands like `silabs-mlops ingest`.
+Set **Environment Variables** on your system. The CLI will automatically fetch these whenever you run CLI commands like `sml ops ingest`.
 
 Windows PowerShell:
 
