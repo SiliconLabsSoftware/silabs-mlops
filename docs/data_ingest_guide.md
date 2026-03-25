@@ -48,6 +48,24 @@ data.config(
 ### 2. Ingest Data Directly
 You can send a list of dictionaries (records) directly to your Databricks table.
 
+> [!IMPORTANT]
+> **Schema Matching**: The keys in your Python dictionaries must match the column names and data types of your Databricks Delta table exactly. If there is a mismatch, the ingestion will fail with a **Schema Mismatch** error.
+> 
+> **Table Schema Example**:
+> Before ingesting, ensure your table is created with matching column names in the databricks:
+>
+> ```sql
+> CREATE TABLE IF NOT EXISTS catalog.schema.sensor_table (
+>   device_id STRING,
+>   temp DOUBLE,
+>   unit STRING
+> ) USING DELTA;
+> ```
+> 
+> For more details on how to create a table, refer to the [Databricks Setup Guide](databricks_setup_guide.md).
+
+You can use this script to send a list of dictionaries (records) directly to your Databricks table.
+
 ```python
 from silabs_mlops import data
 
@@ -108,6 +126,10 @@ while True:
 
 ## Ingesting from Local Files
 The library can automatically read and upload data from local "buffer" files. This can be used when you want the locally stored sensor data to be sent and stored on databricks delta tables.
+
+> [!NOTE]
+> The schema of the records in your local JSON file must match the column names of your target Databricks Delta table exactly to avoid schema mismatch errors.
+
 
 ### Supported Formats
 1. **JSON Array**: `[{"key": "val"}, ...]`
