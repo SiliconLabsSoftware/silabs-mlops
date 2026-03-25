@@ -9,11 +9,10 @@ Note:
 """
 
 import os
-import sys
 
 # Suppress TensorFlow / oneDNN logging and warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import click
 
@@ -23,21 +22,34 @@ from silabs_mlops.config import Config
 
 
 @click.group()
-def main():
-    """Silicon Labs MLOps SDK (Data Ingestion)"""
+def cli():
+    """Silicon Labs MLOps SDK CLI."""
+    pass
+
+
+@cli.group()
+def ops():
+    """MLOps commands."""
     pass
 
 
 # -----------------------------------------------------------------------------
 # Ingestion
 # -----------------------------------------------------------------------------
-@main.command()
-@click.option('--file', required=True, type=click.Path(exists=True), help='Path to JSON data file to ingest.')
-@click.option('--endpoint', help='ZeroBus server endpoint (overrides .env)')
-@click.option('--workspace', help='Databricks workspace URL (overrides .env)')
-@click.option('--table', help='Unity Catalog table name (overrides .env)')
-@click.option('--client-id', help='Service principal client ID (overrides .env)')
-@click.option('--client-secret', help='Service principal client secret (overrides .env)')
+@ops.command()
+@click.option(
+    "--file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to JSON data file to ingest.",
+)
+@click.option("--endpoint", help="ZeroBus server endpoint (overrides .env)")
+@click.option("--workspace", help="Databricks workspace URL (overrides .env)")
+@click.option("--table", help="Unity Catalog table name (overrides .env)")
+@click.option("--client-id", help="Service principal client ID (overrides .env)")
+@click.option(
+    "--client-secret", help="Service principal client secret (overrides .env)"
+)
 def ingest(file, endpoint, workspace, table, client_id, client_secret):
     """
     Ingest JSON data to Databricks via ZeroBus.
@@ -45,7 +57,7 @@ def ingest(file, endpoint, workspace, table, client_id, client_secret):
     Configuration can be provided via .env or CLI options.
 
     Example:
-        silabs-mlops ingest --file sensor_data.json
+        sml ops ingest --file sensor_data.json
     """
     config = IngestConfig(
         server_endpoint=endpoint or Config.ZEROBUS_SERVER_ENDPOINT,
@@ -69,14 +81,19 @@ def ingest(file, endpoint, workspace, table, client_id, client_secret):
         missing.append("ZEROBUS_CLIENT_SECRET")
 
     if missing:
-        click.echo(f"Error: Missing required configuration fields: {', '.join(missing)}")
+        click.echo(
+            f"Error: Missing required configuration fields: {', '.join(missing)}"
+        )
         click.echo("Set these in your .env file or provide via command-line options.")
         raise click.Abort()
 
     ingestor = DataIngestor(config)
     success = ingestor.ingest()
-    click.echo("✓ Ingestion completed successfully." if success else "✗ Ingestion failed.")
+    click.echo(
+        "✓ Ingestion completed successfully." if success else "✗ Ingestion failed."
+    )
 
 
 if __name__ == "__main__":
-    main()
+    cli()
+

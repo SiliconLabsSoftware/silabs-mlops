@@ -5,20 +5,20 @@ description = "Silicon Labs MLOps SDK for edge devices and Databricks."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "click",
-    "requests",
-    "python-dotenv",
-    "pyyaml",
-    "databricks-zerobus-ingest-sdk>=0.2.0",
-    "grpcio>=1.48.0",
-    "protobuf>4.25,<7",
-    "mlflow",
-    "tensorflow>=2.15.0",
-    "numpy",
+  "click",
+  "requests",
+  "python-dotenv",
+  "pyyaml",
+  "databricks-zerobus-ingest-sdk>=0.2.0",
+  "grpcio>=1.48.0",
+  "protobuf>4.25,<7",
+  "mlflow",
+  "tensorflow>=2.15.0",
+  "numpy",
 ]
 
 [project.scripts]
-silabs-mlops = "silabs_mlops.cli:main"
+sml = "silabs_mlops.cli:cli"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -31,9 +31,7 @@ exclude = ["tests*", "tests"]
 managed = true
 
 [dependency-groups]
-dev = [
-    "pytest>=7.0.0",
-]
+dev = ["pytest>=7.0.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
