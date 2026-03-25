@@ -3,11 +3,11 @@ from unittest.mock import patch, MagicMock, mock_open
 import json
 import os
 
-from silabs_mlops.logs import Logger
+from sml.ops.logs import Logger
 
 class TestLogger(unittest.TestCase):
 
-    @patch('silabs_mlops.logs.Path.exists')
+    @patch('sml.ops.logs.Path.exists')
     @patch('builtins.open', new_callable=mock_open)
     def test_logger_init(self, mock_file, mock_exists):
         mock_exists.return_value = False
@@ -22,7 +22,7 @@ class TestLogger(unittest.TestCase):
         # Ensure it creates the initial array
         mock_file().write.assert_called_with('[]')
 
-    @patch('silabs_mlops.logs.requests.post')
+    @patch('sml.ops.logs.requests.post')
     def test_get_token_success(self, mock_post):
         mock_response = MagicMock()
         mock_response.json.return_value = {"access_token": "token123"}
@@ -35,7 +35,7 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(logger._access_token, "token123")
         mock_post.assert_called_once()
         
-    @patch('silabs_mlops.logs.requests.get')
+    @patch('sml.ops.logs.requests.get')
     def test_resolve_warehouse_id_success(self, mock_get):
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -51,10 +51,10 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(wid, "w123")
         self.assertEqual(logger.warehouse_id, "w123")
 
-    @patch('silabs_mlops.logs.json.load')
-    @patch('silabs_mlops.logs.json.dump')
+    @patch('sml.ops.logs.json.load')
+    @patch('sml.ops.logs.json.dump')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('silabs_mlops.logs.requests.post')
+    @patch('sml.ops.logs.requests.post')
     def test_log_event(self, mock_post, mock_file, mock_dump, mock_load):
         # Local read returns empty
         mock_load.return_value = []
@@ -73,7 +73,7 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(mock_post.call_args[0][0], "http://host/api/2.0/sql/statements")
 
     @patch('builtins.print')
-    @patch('silabs_mlops.logs.json.load')
+    @patch('sml.ops.logs.json.load')
     @patch('builtins.open', new_callable=mock_open)
     def test_view_history(self, mock_file, mock_load, mock_print):
         # Fake logs
@@ -89,7 +89,7 @@ class TestLogger(unittest.TestCase):
         mock_print.assert_any_call("t1                   | Profiling        | Info     | Sys             | hello")
 
     @patch('builtins.print')
-    @patch('silabs_mlops.logs.json.load')
+    @patch('sml.ops.logs.json.load')
     @patch('builtins.open', new_callable=mock_open)
     def test_view_history_empty_and_error(self, mock_file, mock_load, mock_print):
         # Test empty logs array
@@ -103,7 +103,7 @@ class TestLogger(unittest.TestCase):
         logger.view()
         mock_print.assert_any_call("\nNo local history file found. Run log_event() to start tracking.")
 
-    @patch('silabs_mlops.logs.requests.post')
+    @patch('sml.ops.logs.requests.post')
     def test_get_token_failure(self, mock_post):
         # Simulate network error or invalid creds
         mock_post.side_effect = Exception("Auth failed")
@@ -118,7 +118,7 @@ class TestLogger(unittest.TestCase):
         logger = Logger("host", "id", None)
         self.assertIsNone(logger._get_token())
 
-    @patch('silabs_mlops.logs.requests.get')
+    @patch('sml.ops.logs.requests.get')
     def test_resolve_warehouse_id_failure(self, mock_get):
         logger = Logger("host", "id", "secret", "MyWarehouse")
         logger._get_token = MagicMock(return_value="token123")
@@ -144,10 +144,10 @@ class TestLogger(unittest.TestCase):
         logger._get_token = MagicMock(return_value=None)
         self.assertIsNone(logger._resolve_warehouse_id())
 
-    @patch('silabs_mlops.logs.json.dump')    
-    @patch('silabs_mlops.logs.json.load')
+    @patch('sml.ops.logs.json.dump')    
+    @patch('sml.ops.logs.json.load')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('silabs_mlops.logs.requests.post')
+    @patch('sml.ops.logs.requests.post')
     def test_log_event_api_failure(self, mock_post, mock_file, mock_load, mock_dump):
         mock_load.return_value = []
         logger = Logger("http://host", "id", "secret", "warehousename", "wid", "tab.le")
@@ -160,14 +160,14 @@ class TestLogger(unittest.TestCase):
             logger.log_event("Profiling", "Info", "Started")
             mock_print.assert_called_with("Warning: Failed to stream log to Databricks: SQL API Error")
 
-    @patch('silabs_mlops.logs.Logger.log_event')
+    @patch('sml.ops.logs.Logger.log_event')
     def test_log_wrappers(self, mock_log_event):
         logger = Logger()
         logger.log_model_deployment("depl message")
         mock_log_event.assert_called_with(type="Deployment", level="Info", message="depl message", source="Deployment Service")
         
-    @patch('silabs_mlops.logs.requests.post')
-    @patch('silabs_mlops.logs.json.load')
+    @patch('sml.ops.logs.requests.post')
+    @patch('sml.ops.logs.json.load')
     @patch('builtins.open', new_callable=mock_open)
     def test_sync_to_databricks(self, mock_file, mock_load, mock_post):
         logger = Logger("http://host", "id", "secret", "warehousename", "wid", "tab.le")
@@ -190,7 +190,7 @@ class TestLogger(unittest.TestCase):
             mock_print.assert_any_call("\n[ERROR] Failed to upload logs: HTTP 400 - Bad Request")
             mock_print.assert_any_call("\n✓ Successfully Bulk Synced 1 local logs into tab.le!")
 
-    @patch('silabs_mlops.logs.json.load')
+    @patch('sml.ops.logs.json.load')
     @patch('builtins.open', new_callable=mock_open)
     def test_sync_to_databricks_edge_cases(self, mock_file, mock_load):
         logger = Logger()
@@ -222,9 +222,9 @@ class TestLogger(unittest.TestCase):
             logger.sync_to_databricks()
             mock_print.assert_called_with("✗ Error: Could not authenticate or resolve warehouse ID. Check your credentials.")
 
-    @patch('silabs_mlops.logs.Path.home')
+    @patch('sml.ops.logs.Path.home')
     def test_logger_init_env_file_parsing(self, mock_home):
-        # Create a fake `.silabs_mlops/.env` file
+        # Create a fake `.sml.ops/.env` file
         mock_home_path = MagicMock()
         mock_home.return_value = mock_home_path
         mock_env_file = MagicMock()
@@ -235,7 +235,7 @@ class TestLogger(unittest.TestCase):
         with patch('builtins.open', mock_open_func):
             with patch.dict(os.environ, clear=True):
                 # Import Config mock throwing an exception to hit the bare fallback branch
-                with patch('silabs_mlops.config.Config', side_effect=Exception("No Config")):
+                with patch('sml.ops.config.Config', side_effect=Exception("No Config")):
                     logger = Logger(client_id="id", client_secret="sec")
                     
                     self.assertEqual(os.environ.get("DATABRICKS_HOST"), "http://fake-from-env")

@@ -1,5 +1,5 @@
 """
-Configuration module for the silabs-mlops toolkit.
+Configuration module for the sml ops toolkit.
 
 Loads environment variables from a `.env` file and exposes
 application-wide configuration values such as ZeroBus endpoints, credentials,
@@ -11,7 +11,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env_path = BASE_DIR / ".env"
 
 if env_path.exists():
@@ -19,6 +19,7 @@ if env_path.exists():
 else:
     # Fallback to standard discovery if not found at root
     load_dotenv()
+
 
 class Config:
     # ZeroBus configuration

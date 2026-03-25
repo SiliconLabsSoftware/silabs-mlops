@@ -265,7 +265,7 @@ If you are writing a Python script, you must call `data.config()` once at the st
 
 ```python
 import os
-from silabs_mlops import data
+from sml.ops import data
 
 data.config(
     server_endpoint=os.getenv("ZEROBUS_SERVER_ENDPOINT"),
@@ -279,7 +279,7 @@ data.config(
 #### Direct Configuration
 
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 data.config(
     server_endpoint="your-zerobus-endpoint.databricks.com",

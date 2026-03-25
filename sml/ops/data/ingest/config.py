@@ -1,6 +1,7 @@
 """
 Configuration for ZeroBus ingestion.
 """
+
 from dataclasses import dataclass
 from typing import Optional
 
@@ -18,6 +19,7 @@ class IngestConfig:
         client_secret: Service principal secret
         buffer_path: Optional path to buffered data file (JSON lines format)
     """
+
     server_endpoint: str
     workspace_url: str
     table_name: str
@@ -28,12 +30,21 @@ class IngestConfig:
     def __post_init__(self):
         """Strip whitespace from all string fields to prevent silent auth failures
         caused by accidental spaces/newlines in .env values."""
-        self.server_endpoint = self.server_endpoint.strip() if self.server_endpoint else self.server_endpoint
-        self.workspace_url   = self.workspace_url.strip()   if self.workspace_url   else self.workspace_url
-        self.table_name      = self.table_name.strip()      if self.table_name      else self.table_name
-        self.client_id       = self.client_id.strip()       if self.client_id       else self.client_id
-        self.client_secret   = self.client_secret.strip()   if self.client_secret   else self.client_secret
+        self.server_endpoint = (
+            self.server_endpoint.strip()
+            if self.server_endpoint
+            else self.server_endpoint
+        )
+        self.workspace_url = (
+            self.workspace_url.strip() if self.workspace_url else self.workspace_url
+        )
+        self.table_name = (
+            self.table_name.strip() if self.table_name else self.table_name
+        )
+        self.client_id = self.client_id.strip() if self.client_id else self.client_id
+        self.client_secret = (
+            self.client_secret.strip() if self.client_secret else self.client_secret
+        )
         # Also strip trailing slashes on workspace_url (common copy-paste issue)
         if self.workspace_url:
             self.workspace_url = self.workspace_url.rstrip("/")
-

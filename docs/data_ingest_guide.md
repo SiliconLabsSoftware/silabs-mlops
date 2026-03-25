@@ -21,7 +21,7 @@ This initializes the global configuration shared across the entire library. Refe
 #### **Option 1: Using Environment Variables**
 ```python
 import os
-from silabs_mlops import data
+from sml.ops import data
 
 data.config(
     server_endpoint=os.getenv("ZEROBUS_SERVER_ENDPOINT"),
@@ -34,7 +34,7 @@ data.config(
 
 #### **Option 2: Direct Configuration**
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 data.config(
     server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
@@ -67,7 +67,7 @@ You can send a list of dictionaries (records) directly to your Databricks table.
 You can use this script to send a list of dictionaries (records) directly to your Databricks table.
 
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 records = [
     {"device_id": "sensor-01", "temp": 24.5, "unit": "C"},
@@ -85,7 +85,7 @@ In many IoT scenarios, you want to collect and send data continuously in a loop.
 
 ```python
 import time
-from silabs_mlops import data
+from sml.ops import data
 
 # Configure once at application startup
 data.config(
@@ -139,7 +139,7 @@ The library can automatically read and upload data from local "buffer" files. Th
 To sync a local file to Databricks, use the `ingest_from_file` function. This is the most robust way to handle local buffers.
 
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 # Ingest from file (uses the same configuration from above)
 success = data.ingest_from_file("path/to/sensor_data.json") # -> provide the path to your local buffer file 
@@ -153,7 +153,7 @@ if success:
 For more control, you can instantiate the `DataIngestor` class directly.
 
 ```python
-from silabs_mlops.data.ingest import DataIngestor, IngestConfig
+from sml.ops.data.ingest import DataIngestor, IngestConfig
 
 config = IngestConfig(
     server_endpoint="...",
@@ -183,7 +183,7 @@ sml ops logs sync
 
 **Via Python Script:**
 ```python
-from silabs_mlops.logs import Logger
+from sml.ops.logs import Logger
 
 logger = Logger()
 # Filter only for ingestion events

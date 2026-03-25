@@ -2,26 +2,20 @@
 ZeroBus client wrapper for Databricks ingestion.
 """
 from typing import Dict, Any, List, Optional, Callable
+
 try:
     from zerobus.sdk.sync import ZerobusSdk
     from zerobus.sdk.shared import RecordType, StreamConfigurationOptions, TableProperties
+
     ZEROBUS_AVAILABLE = True
 except ImportError:
     ZEROBUS_AVAILABLE = False
 
-from silabs_mlops.logs import Logger
+from sml.ops.logs import Logger
 
 
 class ZerobusIngestClient:
-    """
-    Wrapper around the Databricks ZeroBus SDK for ingesting data to Delta tables.
-    
-    Provides a clean interface for:
-    - Establishing secure streaming connections
-    - Ingesting JSON records (single or batch)
-    - Handling acknowledgements
-    - Managing connection lifecycle
-    """
+    """Wrapper around the Databricks ZeroBus SDK for ingesting data to Delta tables."""
 
     def __init__(
         self,
@@ -32,23 +26,12 @@ class ZerobusIngestClient:
         client_secret: str,
         ack_callback: Optional[Callable[[Any], None]] = None,
     ):
-        """
-        Initialize ZeroBus client.
-        
-        Args:
-            server_endpoint: ZeroBus server endpoint
-            workspace_url: Databricks workspace URL
-            table_name: Unity Catalog table name
-            client_id: Service principal application ID
-            client_secret: Service principal secret
-            ack_callback: Optional callback for acknowledgement tracking
-        """
         if not ZEROBUS_AVAILABLE:
             raise ImportError(
                 "databricks-zerobus-ingest-sdk is not installed. "
                 "Install it with: pip install databricks-zerobus-ingest-sdk"
             )
-        
+
         self.server_endpoint = server_endpoint
         self.workspace_url = workspace_url
         self.table_name = table_name
@@ -65,11 +48,9 @@ class ZerobusIngestClient:
         self._sdk = ZerobusSdk(self.server_endpoint, self.workspace_url)
 
         table_properties = TableProperties(self.table_name)
-        
-        # Use JSON record type for simplicity (recommended for IoT sensor data)
         options = StreamConfigurationOptions(
             record_type=RecordType.JSON,
-            ack_callback=self.ack_callback if self.ack_callback else None
+            ack_callback=self.ack_callback if self.ack_callback else None,
         )
 
         try:
@@ -79,38 +60,28 @@ class ZerobusIngestClient:
                 table_properties,
                 options,
             )
-            self.logger.log_data_ingestion(f"Successfully connected to ZeroBus stream for table: {self.table_name}", level="Success")
+            self.logger.log_data_ingestion(
+                f"Successfully connected to ZeroBus stream for table: {self.table_name}",
+                level="Success",
+            )
         except Exception as e:
-            self.logger.log_data_ingestion(f"Failed to connect to ZeroBus stream for table {self.table_name}. Error: {e}", level="Error")
+            self.logger.log_data_ingestion(
+                f"Failed to connect to ZeroBus stream for table {self.table_name}. Error: {e}",
+                level="Error",
+            )
             raise e
 
     def ingest_record(self, record: Dict[str, Any], wait_for_ack: bool = True) -> None:
-        """
-        Ingest a single JSON record into ZeroBus.
-        
-        Args:
-            record: Dictionary representing the record to ingest
-            wait_for_ack: Whether to block until acknowledgement is received
-        
-        Raises:
-            RuntimeError: If stream is not initialized
-        """
+        """Ingest a single JSON record into ZeroBus."""
         if not self._stream:
             raise RuntimeError("ZeroBus stream not initialized. Call connect() first.")
 
         ack = self._stream.ingest_record(record)
-
         if wait_for_ack:
             ack.wait_for_ack()
 
     def ingest_batch(self, records: List[Dict[str, Any]], wait_for_ack: bool = True) -> None:
-        """
-        Ingest multiple records sequentially.
-        
-        Args:
-            records: List of dictionaries to ingest
-            wait_for_ack: Whether to wait for acknowledgement on each record
-        """
+        """Ingest multiple records sequentially."""
         for record in records:
             self.ingest_record(record, wait_for_ack=wait_for_ack)
 
@@ -121,6 +92,10 @@ class ZerobusIngestClient:
                 self._stream.close()
                 self.logger.log_data_ingestion(f"Closed ZeroBus stream for table: {self.table_name}", level="Info")
             except Exception as e:
-                self.logger.log_data_ingestion(f"Error closing ZeroBus stream for table {self.table_name}: {e}", level="Warning")
+                self.logger.log_data_ingestion(
+                    f"Error closing ZeroBus stream for table {self.table_name}: {e}",
+                    level="Warning",
+                )
             finally:
                 self._stream = None
+

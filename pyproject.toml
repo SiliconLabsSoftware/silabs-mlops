@@ -1,5 +1,5 @@
 [project]
-name = "silabs-mlops-sdk"
+name = "sml-ops"
 version = "0.1.0"
 description = "Silicon Labs MLOps SDK for edge devices and Databricks."
 readme = "README.md"
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-sml = "silabs_mlops.cli:cli"
+sml = "sml.ops.cli:cli"
 
 [build-system]
 requires = ["setuptools>=61.0"]

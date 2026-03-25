@@ -4,8 +4,8 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 
-from silabs_mlops.data.ingest.config import IngestConfig
-from silabs_mlops.data.ingest.ingestor import DataIngestor
+from sml.ops.data.ingest.config import IngestConfig
+from sml.ops.data.ingest.ingestor import DataIngestor
 
 
 @pytest.fixture
@@ -64,7 +64,7 @@ import sys
 def test_ingest_no_records_outputs_and_aborts(config, capsys, monkeypatch):
     """If there's no data, it shouldn't connect and should print a message."""
     # Obtain the module directly from sys.modules to avoid shadowing by data.ingest()
-    ingestor_mod = sys.modules["silabs_mlops.data.ingest.ingestor"]
+    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
 
     class DummyClient:
         def __init__(self, *args, **kwargs):
@@ -87,7 +87,7 @@ def test_ingest_no_records_outputs_and_aborts(config, capsys, monkeypatch):
 
 def test_ingest_happy_path_calls_once(config):
     """Test ingesting an explicitly passed python list."""
-    ingestor_mod = sys.modules["silabs_mlops.data.ingest.ingestor"]
+    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
     
     with patch.object(ingestor_mod, "ZerobusIngestClient") as mock_client_class:
         mock_client = MagicMock()
@@ -106,7 +106,7 @@ def test_ingest_happy_path_calls_once(config):
 
 def test_ingest_auth_failure_cleanup(config):
     """Test capturing a 401 Unauthorized exception and ensuring cleanup."""
-    ingestor_mod = sys.modules["silabs_mlops.data.ingest.ingestor"]
+    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
     
     with patch.object(ingestor_mod, "ZerobusIngestClient") as mock_client_class:
         mock_client = MagicMock()
@@ -122,7 +122,7 @@ def test_ingest_auth_failure_cleanup(config):
 
 def test_ingest_schema_mismatch_failure(config):
     """Test capturing a schema/decoder error during batch ingest."""
-    ingestor_mod = sys.modules["silabs_mlops.data.ingest.ingestor"]
+    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
     
     with patch.object(ingestor_mod, "ZerobusIngestClient") as mock_client_class:
         mock_client = MagicMock()
@@ -143,7 +143,7 @@ def test_ingest_from_buffer(tmp_path: Path, config):
     buf.write_text(json.dumps([{"val": 100}]), encoding="utf-8")
     config.buffer_path = str(buf)
 
-    ingestor_mod = sys.modules["silabs_mlops.data.ingest.ingestor"]
+    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
     with patch.object(ingestor_mod, "ZerobusIngestClient") as mock_client_class:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client

@@ -3,14 +3,14 @@ name: Pull Request
 on:
   push:
     paths:
-      - "silabs_mlops/**"
+      - "sml/**"
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/python-tests.yml"
   pull_request:
     paths:
-      - "silabs_mlops/**"
+      - "sml/**"
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"

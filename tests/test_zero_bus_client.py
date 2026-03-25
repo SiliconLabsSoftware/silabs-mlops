@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock, patch
 import pytest
 
-from silabs_mlops.data.ingest.config import IngestConfig
-from silabs_mlops.data.ingest.zerobus_client import ZerobusIngestClient, ZEROBUS_AVAILABLE
+from sml.ops.data.ingest.config import IngestConfig
+from sml.ops.data.ingest.zerobus_client import ZerobusIngestClient, ZEROBUS_AVAILABLE
 
 
 def test_config_whitespace_stripping():
@@ -26,7 +26,7 @@ import sys
 
 def test_zerobus_client_import_error():
     """Verify an ImportError is raised if the SDK is missing."""
-    client_mod = sys.modules["silabs_mlops.data.ingest.zerobus_client"]
+    client_mod = sys.modules["sml.ops.data.ingest.zerobus_client"]
     with patch.object(client_mod, "ZEROBUS_AVAILABLE", False):
         with pytest.raises(ImportError) as exc:
             ZerobusIngestClient("server", "workspace", "table", "id", "secret")
@@ -34,7 +34,7 @@ def test_zerobus_client_import_error():
 
 def test_zerobus_client_connect_success():
     """Test successful stream creation."""
-    client_mod = sys.modules["silabs_mlops.data.ingest.zerobus_client"]
+    client_mod = sys.modules["sml.ops.data.ingest.zerobus_client"]
     with patch.object(client_mod, "ZEROBUS_AVAILABLE", True), patch.object(client_mod, "ZerobusSdk") as mock_sdk_class:
         # Setup mocks
         mock_sdk_instance = MagicMock()
@@ -51,7 +51,7 @@ def test_zerobus_client_connect_success():
 
 def test_zerobus_client_connect_failure():
     """Test handling of connection error."""
-    client_mod = sys.modules["silabs_mlops.data.ingest.zerobus_client"]
+    client_mod = sys.modules["sml.ops.data.ingest.zerobus_client"]
     with patch.object(client_mod, "ZEROBUS_AVAILABLE", True), patch.object(client_mod, "ZerobusSdk") as mock_sdk_class:
         mock_sdk_instance = MagicMock()
         mock_sdk_class.return_value = mock_sdk_instance
@@ -64,7 +64,7 @@ def test_zerobus_client_connect_failure():
 
 def test_zerobus_ingest_record_without_connect():
     """Verify runtime error if trying to ingest without connecting first."""
-    client_mod = sys.modules["silabs_mlops.data.ingest.zerobus_client"]
+    client_mod = sys.modules["sml.ops.data.ingest.zerobus_client"]
     with patch.object(client_mod, "ZEROBUS_AVAILABLE", True):
         client = ZerobusIngestClient("server", "workspace", "table", "id", "secret")
         with pytest.raises(RuntimeError) as exc:
@@ -73,7 +73,7 @@ def test_zerobus_ingest_record_without_connect():
 
 def test_zerobus_ingest_batch():
     """Test successful ingestion of multiple records sequentially."""
-    client_mod = sys.modules["silabs_mlops.data.ingest.zerobus_client"]
+    client_mod = sys.modules["sml.ops.data.ingest.zerobus_client"]
     with patch.object(client_mod, "ZEROBUS_AVAILABLE", True):
         client = ZerobusIngestClient("server", "workspace", "table", "id", "secret")
         mock_stream = MagicMock()
@@ -92,7 +92,7 @@ def test_zerobus_ingest_batch():
 
 def test_zerobus_close_stream():
     """Test stream closure path."""
-    client_mod = sys.modules["silabs_mlops.data.ingest.zerobus_client"]
+    client_mod = sys.modules["sml.ops.data.ingest.zerobus_client"]
     with patch.object(client_mod, "ZEROBUS_AVAILABLE", True):
         client = ZerobusIngestClient("server", "workspace", "table", "id", "secret")
         mock_stream = MagicMock()

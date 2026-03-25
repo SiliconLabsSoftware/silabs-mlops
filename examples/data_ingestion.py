@@ -1,7 +1,7 @@
 """
 Simple Usage Examples - SiLabs MLOps Data Library
 """
-from silabs_mlops import data
+from sml.ops import data
 
 # =============================================================================
 # Example 1: Basic Usage - Configure and Ingest
