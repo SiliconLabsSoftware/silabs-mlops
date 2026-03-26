@@ -4,3 +4,5 @@
 **/*.egg-info
 profiling_results/
 .coverage
+build/
+dist/
