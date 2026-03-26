@@ -7,14 +7,14 @@ on:
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"
-      - ".github/workflows/python-tests.yml"
+      - ".github/workflows/pr.yml"
   pull_request:
     paths:
       - "sml/**"
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"
-      - ".github/workflows/python-tests.yml"
+      - ".github/workflows/pr.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
