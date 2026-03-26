@@ -77,23 +77,43 @@ Outputs are standard **`.whl`** and **`.tar.gz`** artifacts you can publish or i
 
 Read in this order if you are setting up end-to-end:
 
-| Order | Guide | Description |
-| :---: | --- | --- |
-| 1 | [Databricks Setup Guide](docs/databricks_setup_guide.md) | Service principal, Unity Catalog, volumes, and how configuration reaches the SDK. |
-| 2 | [Data Ingestion User Guide](docs/data_ingest_guide.md) | Ingesting IoT data into Delta via ZeroBus and `data.config()`. |
-| 3 | [Model Profiling User Guide](docs/profiling_guide.md) | Profiling on local machine or Silicon Labs hardware with `mvp_profiler`. |
-| 4 | [Databricks Notebook Profiling Guide](docs/model_profiling_on_databricks_guide.md) | Using `examples/model_profiling.ipynb` for profiling, MLflow, and model registry on Databricks. |
-| 5 | [Raspberry Pi Deployment Guide](docs/deployment_guide.md) | Environment setup, SSH, and model deployment via the CLI. |
+| Order | Guide                                                                              | Description                                                                                     |
+| :---: | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+|   1   | [Databricks Setup Guide](docs/databricks_setup_guide.md)                           | Service principal, Unity Catalog, volumes, and how configuration reaches the SDK.               |
+|   2   | [Data Ingestion User Guide](docs/data_ingest_guide.md)                             | Ingesting IoT data into Delta via ZeroBus and `data.config()`.                                  |
+|   3   | [Model Profiling User Guide](docs/profiling_guide.md)                              | Profiling on local machine or Silicon Labs hardware with `mvp_profiler`.                        |
+|   4   | [Databricks Notebook Profiling Guide](docs/model_profiling_on_databricks_guide.md) | Using `examples/model_profiling.ipynb` for profiling, MLflow, and model registry on Databricks. |
+|   5   | [Raspberry Pi Deployment Guide](docs/deployment_guide.md)                          | Environment setup, SSH, and model deployment via the CLI.                                       |
 
 ## CLI
 
 After installation, the console script **`sml`** is available (`sml.ops.cli`). Remote deployment and environment setup are covered in [Raspberry Pi Deployment Guide](docs/deployment_guide.md).
 
+## Build Executable Binaries
+
+Build from the repository root. Commands below assume dependencies are installed in `.venv`.
+
+### PyInstaller
+
+```bash
+uv pip install pyinstaller
+pyinstaller --onefile --name sml "sml/ops/cli.py"
+./dist/sml --help
+```
+
+### Nuitka
+
+```bash
+uv pip install nuitka zstandard
+/python -m nuitka --onefile --assume-yes-for-downloads --output-dir=dist --output-filename=sml "sml/ops/cli.py"
+./dist/sml --help
+```
+
 ## Repository layout
 
-| Path | Role |
-| --- | --- |
-| `sml/ops/` | Python package: `data`, `model`, CLI, logging |
-| `docs/` | User and operator guides (linked above) |
-| `examples/model_profiling.ipynb` | Databricks-oriented profiling workflow |
-| `tests/` | Test suite |
+| Path                             | Role                                          |
+| -------------------------------- | --------------------------------------------- |
+| `sml/ops/`                       | Python package: `data`, `model`, CLI, logging |
+| `docs/`                          | User and operator guides (linked above)       |
+| `examples/model_profiling.ipynb` | Databricks-oriented profiling workflow        |
+| `tests/`                         | Test suite                                    |
