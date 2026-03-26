@@ -3,22 +3,18 @@ name = "sml-ops"
 version = "0.1.0"
 description = "Silicon Labs MLOps SDK for edge devices and Databricks."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.14"
 dependencies = [
-  "click",
-  "requests",
-  "python-dotenv",
-  "pyyaml",
-  "databricks-zerobus-ingest-sdk>=0.2.0",
-  "grpcio>=1.48.0",
-  "protobuf>4.25,<7",
-  "mlflow",
-  "tensorflow>=2.15.0",
-  "numpy",
+  "click>=8.3.1",
+  "databricks-zerobus-ingest-sdk>=1.1.0",
+  "dotenv>=0.9.9",
+  "mlflow>=3.10.1",
+  "pyyaml>=6.0.3",
+  "requests>=2.33.0",
 ]
 
-[project.optional-dependencies]
-test = ["pytest", "pytest-cov"]
+[dependency-groups]
+test = ["pytest>=9.0.2", "pytest-cov>=7.1.0"]
 
 [project.scripts]
 sml = "sml.ops.cli:cli"
@@ -32,9 +28,6 @@ exclude = ["tests*", "tests"]
 
 [tool.uv]
 managed = true
-
-[dependency-groups]
-dev = ["pytest>=7.0.0", "pytest-cov>=7.1.0"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=sml.ops.model --cov-report=term-missing"
