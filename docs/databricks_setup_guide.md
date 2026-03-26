@@ -18,6 +18,9 @@ To run the Silicon Labs MLOps SDK end-to-end, users must complete the following 
 
 ## 1. Create Required Credentials
 
+> [!IMPORTANT]
+> **Admin Permissions Required**: To create a Service Principal and generate Client Secrets, you must have **Databricks Admin** privileges (either Account Admin or Workspace Admin). If you have the required permissions, you can manage and create service principals directly. For that refer [Databricks Manage Service Principals](https://docs.databricks.com/aws/en/admin/users-groups/manage-service-principals). If you do not have these permissions, please contact your Databricks administrator to perform these steps for you.
+
 The SDK connects to Databricks using:
 
 - **Environment Variables (recommended)**
@@ -32,16 +35,24 @@ You must generate:
 - ZeroBus Endpoint
 
 ### 1.1 Create a Service Principal
+*Note: Admin privileges required. Contact your administrator if you are not an admin.*
 
-1. Open Databricks workspace
-2. Navigate to **Admin Settings → Service Principals**
-3. Click **Add Service Principal**
-4. Name it (e.g., `mlops-sp`)
+1. Open Databricks workspace  
+
+2. Navigate to **Admin Settings → Service Principals**  
+3. Click **Add Service Principal**  
+4. Name it (e.g., `mlops-sp`)  
 5. Open the SP details page
 
 ![alt text](images/service_principal.jpeg)
 
-### 1.2 Generate a Client Secret
+### 1.2 Generate a Client Secret  
+*Note: Admin access required. Contact your administrator for secret generation.*
+
+1. Inside the service principal, open **Secrets**  
+
+2. Click **Generate New Secret**  
+3. Copy the **Client ID** and **Client Secret**  
 
 1. Inside the service principal, open **Secrets**
 2. Click **Generate New Secret**
@@ -90,18 +101,20 @@ Your workspace must be zerobus enabled and in a region supported by ZeroBus, and
 
 ### 2.1 Workspace Permissions
 
-1. Before proceeding, ensure that your Databricks account (or the group your account belongs to) has the required workspace entitlements enabled — specifically:
-   - **Workspace access** → allows you to log into and use the Databricks workspace
-   - **Databricks SQL access** → allows you to run SQL queries and access SQL Warehouses
+> [!NOTE]
+> If you are a Databricks admin, you can manage these yourself. If you are not an administrator, you must contact your Databricks admin to enable "Workspace access" and "Databricks SQL access" for your user account or group.
+
+
+    * **Workspace access** → allows you to log into and use the Databricks workspace
+    * **Databricks SQL access** → allows you to run SQL queries and access SQL Warehouses
 
 You can verify these in **Admin Console → Groups → [Your Group] → Entitlements**.
 
 ![alt text](images/access.png)
 
-1. The workspace should be `zerobus enabled` to ingest data using ZeroBus. If it is not enabled the ingestion will fail.
+2. The workspace should be `zerobus enabled` to ingest data using ZeroBus. If it is not enabled the ingestion will fail.  
 
 #### Verify Zerobus Connector Availability
-
 The Zerobus Ingest Connector should appear by default in your Databricks workspace under:
 Add Data → Databricks Connectors → Zerobus Ingest
 
@@ -123,7 +136,11 @@ It's available in workspaces deployed in these regions - [Zerobus Ingest connect
 
 ## 2.2 Unity Catalog Permissions
 
+> [!NOTE]
+> Execution of `GRANT` statements requires you to be either a **Metastore Admin**, the **owner** of the object (Catalog, Schema, or Table), or have the **MANAGE** permission on that object. If you are not a Metastore Admin or the owner, please contact your data administrator to grant these permissions to your service principal, or ask them to provide you the **MANAGE** permission on the object so that you can manage the grants yourself.
+
 If you haven't created a catalog, schema, table, and volume, or if you want to create new ones, you can create them by following the steps in [Unity Catalog Object Creation](#3-unity-catalog-object-creation).
+
 
 Unity Catalog permissions must be granted at:
 
@@ -134,6 +151,7 @@ Unity Catalog permissions must be granted at:
 
 ### Catalog Level
 
+**Via SQL:**  
 ```sql
 GRANT USE CATALOG ON CATALOG <catalog> TO `<service-principal>`;
 GRANT USE SCHEMA ON CATALOG <catalog> TO `<service-principal>`;
@@ -142,37 +160,64 @@ GRANT MODIFY ON CATALOG <catalog> TO `<service-principal>`;
 GRANT CREATE TABLE ON CATALOG <catalog> TO `<service-principal>`;
 ```
 
+**Via UI (as shown in the image below):**  
+1. In the **Catalog Explorer**, select the target catalog.  
+2. Go to the **Permissions** tab.  
+3. Click the **Grant** button and select the service principal to assign the required permissions.
+
 ![alt text](images/catalog_permission.png)
 
 ### Schema Level
 
+**Via SQL:**  
 ```sql
 GRANT USE SCHEMA ON SCHEMA <catalog>.<schema> TO `<service-principal>`;
 GRANT SELECT ON SCHEMA <catalog>.<schema> TO `<service-principal>`;
 GRANT MODIFY ON SCHEMA <catalog>.<schema> TO `<service-principal>`;
 ```
 
+**Via UI (as shown in the image below):**  
+1. In the **Catalog Explorer**, select the target schema.  
+2. Go to the **Permissions** tab.  
+3. Click the **Grant** button and select the service principal to assign the required permissions.
+
 ![alt text](images/schema_permission.png)
 
 ### Table Level
 
+**Via SQL:**  
 ```sql
 GRANT SELECT, MODIFY ON TABLE <catalog>.<schema>.<table> TO `<service-principal>`;
 ```
+
+**Via UI (as shown in the image below):**  
+1. In the **Catalog Explorer**, select the target table.  
+2. Go to the **Permissions** tab.  
+3. Click the **Grant** button and select the service principal to assign the required permissions.
 
 ![alt text](images/Table_permission.png)
 
 ### Volume Level
 
+**Via SQL:**  
 ```sql
 GRANT READ, WRITE ON VOLUME <catalog>.<schema>.<volume> TO `<service-principal>`;
 ```
+
+**Via UI (as shown in the image below):**  
+1. In the **Catalog Explorer**, select the target volume.  
+2. Go to the **Permissions** tab.  
+3. Click the **Grant** button and select the service principal to assign the required permissions.
+
 
 ![alt text](images/volume_permission.png)
 
 ---
 
 ## 3. Create Catalog, Schema, Tables, and Volumes
+
+> [!NOTE]
+> Creating high-level Unity Catalog objects (like Catalogs and Schemas) requires specific privileges, such as **CREATE CATALOG** (typically held by Metastore Admins). If you encounter permission errors, please contact your Databricks Workspace administrator to perform these operations or grant you the necessary creation rights.
 
 ### 3.1 Create a Catalog
 
@@ -187,17 +232,18 @@ _Note: Make sure your account has permission to create a catalog. If not, ask yo
 ### 3.2 Create a Schema
 
 1. Choose & click the Catalog you want the schema to be created in.
-2. Inside your catalog, click **Create Schema** on the top right corner
-3. Example: `sensor_data`
+2. Inside your catalog, click **Create Schema** on the top right corner.
+3. Example: `sensor_data` 
 
 ![alt text](images/create_schema.png)
 
 ### 3.3 Create a Table
-
+    
 1. Go to **SQL Editor**
-2. Click on **SQL Query** and run the following query in that new SQL Query tab:
+2. Click on **SQL Query** and run the following query in that new SQL Query tab: 
 
 ```sql
+-- Example Table Schema (Edit these columns to match your needs)
 CREATE TABLE IF NOT EXISTS mlops_catalog.sensor_data.readings (
   timestamp TIMESTAMP,
   device_id STRING,
@@ -207,6 +253,9 @@ CREATE TABLE IF NOT EXISTS mlops_catalog.sensor_data.readings (
 ```
 
 Once you run the script & created the table, you can find the table in the Catalog Explorer under the schema you created it in.
+
+> [!IMPORTANT]
+> The SQL query above is just an **example**. You should replace these columns and data types with the specific fields your application requires. 
 
 ![alt text](images/create_table.png)
 
