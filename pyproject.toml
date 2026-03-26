@@ -17,6 +17,12 @@ dependencies = [
   "numpy",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
 [project.scripts]
 sml = "sml.ops.cli:cli"
 

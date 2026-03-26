@@ -1,14 +1,32 @@
 """
 sml.ops.model
-Unified public API for profiling.
+Public API for profiling (NPU) and deployment (RPi / Commander).
 """
 
-from typing import Optional
+from typing import Any, Optional
 
-from .profiler import NPUProfiler, ProfileResult, LayerProfile
+from .config import DeployConfig
+from .deployer import RPiDeployer
 
-# Singleton profiler instance used by the package-level `profile()` helper.
-_profiler = NPUProfiler()
+__all__ = [
+    "DeployConfig",
+    "RPiDeployer",
+    "NPUProfiler",
+    "ProfileResult",
+    "LayerProfile",
+    "profile",
+]
+
+_npu_profiler = None
+
+
+def _get_npu_profiler():
+    global _npu_profiler
+    if _npu_profiler is None:
+        from .profiler import NPUProfiler
+
+        _npu_profiler = NPUProfiler()
+    return _npu_profiler
 
 
 def profile(
@@ -23,26 +41,9 @@ def profile(
     weights_paging: bool = False,
     use_simulator: bool = False,
     volume_path: Optional[str] = None,
-) -> ProfileResult:
-    """
-    Profile a model using the Silicon Labs MVP Profiler (mvp_profiler).
-
-    Args:
-        model_path:     Path to the .tflite or compiled .zip model file.
-        device_id:      Optional J-Link serial number or IP address for on-target profiling.
-        output_dir:     Directory to save profiling artifacts.
-        profiler_path:  Explicit path to profiler binary (if not in PATH).
-        gui:            Launch the Profiler GUI (http://localhost:8080).
-        timeout:        Subprocess timeout in seconds.
-        accelerator:    Hardware accelerator target, e.g., "mvpv1".
-        platform:       Target hardware platform/part/family (optional).
-        weights_paging: Enable weights paging in profiler (if supported).
-        use_simulator:  Run on simulator instead of hardware (if supported).
-
-    Returns:
-        ProfileResult with parsed profiling metrics.
-    """
-    return _profiler.profile(
+) -> Any:
+    """Profile a model using the Silicon Labs MVP Profiler (mvp_profiler)."""
+    return _get_npu_profiler().profile(
         model_path,
         device_id,
         output_dir,
@@ -57,9 +58,17 @@ def profile(
     )
 
 
-__all__ = [
-    "NPUProfiler",
-    "ProfileResult",
-    "LayerProfile",
-    "profile",
-]
+def __getattr__(name: str) -> Any:
+    if name == "NPUProfiler":
+        from .profiler import NPUProfiler
+
+        return NPUProfiler
+    if name == "ProfileResult":
+        from .profiler import ProfileResult
+
+        return ProfileResult
+    if name == "LayerProfile":
+        from .profiler import LayerProfile
+
+        return LayerProfile
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
