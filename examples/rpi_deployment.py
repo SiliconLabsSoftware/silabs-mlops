@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 # Load .env credentials if necessary
 load_dotenv()
 
-from silabs_mlops.model.deployer import RPiDeployer
+from sml.ops.model.deployer import RPiDeployer
 
 def run_example():
     print("\n--- SiLabs MLOps RPi Deployment ---")

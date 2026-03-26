@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 # Testing the public API (exercises __init__.py and config.py)
-from silabs_mlops.model import RPiDeployer
+from sml.ops.model import RPiDeployer
 
 @pytest.fixture
 def deployer(tmp_path: Path):
@@ -29,20 +29,20 @@ def test_find_remote_commander_logic(monkeypatch, deployer):
     def run_found(cmd, **k):
         return types.SimpleNamespace(returncode=0, stdout="/usr/bin/commander-cli\n", stderr="")
     
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", run_found)
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", run_found)
     assert deployer._find_remote_commander("u@h") == "/usr/bin/commander-cli"
 
     # Scenario B: Discovery fails, use fallback from init
     def run_fail(cmd, **k):
         return types.SimpleNamespace(returncode=1, stdout="", stderr="")
     
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", run_fail)
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", run_fail)
     assert deployer._find_remote_commander("u@h") == "commander"
 
 def test_jlink_serial_detection_parsing(monkeypatch, deployer):
     """Verify that multiple serial numbers are correctly extracted."""
     adapter_out = "serialNumber = 123456\nserialNumber=987654"
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", 
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", 
                         lambda *a, **k: types.SimpleNamespace(returncode=0, stdout=adapter_out, stderr=""))
     
     serials = deployer._get_jlink_serials("u@h")
@@ -51,7 +51,7 @@ def test_jlink_serial_detection_parsing(monkeypatch, deployer):
 def test_device_name_parsing(monkeypatch, deployer):
     """Verify part number extraction from commander device info."""
     info_out = "Part Number : EFR32MG26B510F3200IM68\nFlash Size : 3200 kB"
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", 
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", 
                         lambda *a, **k: types.SimpleNamespace(returncode=0, stdout=info_out, stderr=""))
     
     name = deployer._get_device_name("u@h", "123")
@@ -66,7 +66,7 @@ def test_full_deployment_flow_orchestration(monkeypatch, deployer):
         if "device info" in j: return types.SimpleNamespace(returncode=0, stdout="Part Number : EFR32", stderr="")
         return types.SimpleNamespace(returncode=0, stdout="OK", stderr="")
 
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", fake_run)
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", fake_run)
     
     # This should run through discovery, scp, detection, and flash without errors
     deployer.deploy()
@@ -78,7 +78,7 @@ def test_interactive_selection_logic(monkeypatch, deployer):
             return types.SimpleNamespace(returncode=0, stdout="serialNumber=111\nserialNumber=222", stderr="")
         return types.SimpleNamespace(returncode=0, stdout="Part Number : EFR32", stderr="")
 
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", fake_run)
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", fake_run)
     
     # Mock user typing "2" to select the second serial number
     with patch("builtins.input", return_value="2"):
@@ -92,14 +92,14 @@ def test_flash_failure_handling(monkeypatch, deployer):
             return types.SimpleNamespace(returncode=1, stdout="", stderr="Verification failed")
         return types.SimpleNamespace(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", run_fail)
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", run_fail)
     with pytest.raises(RuntimeError) as exc:
         deployer._flash_firmware("pi@h", "/tmp/t.s37", "123", "EFR32")
     assert "Flash failed" in str(exc.value)
 
 def test_error_scp_failure(monkeypatch, deployer):
     """Test SCP failure branch."""
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", 
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", 
                         lambda *a, **k: types.SimpleNamespace(returncode=1, stdout="", stderr="SCP fail"))
     with pytest.raises(RuntimeError) as exc:
         deployer._scp_firmware("local", "pi@h", "remote")
@@ -112,14 +112,14 @@ def test_error_adapter_list_failure(monkeypatch, deployer):
             return types.SimpleNamespace(returncode=1, stdout="", stderr="Adapter list failed")
         return types.SimpleNamespace(returncode=0, stdout="OK", stderr="")
     
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", run_fail)
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", run_fail)
     with pytest.raises(RuntimeError) as exc:
         deployer._get_jlink_serials("pi@h")
     assert "Adapter list failed" in str(exc.value)
 
 def test_error_no_devices_connected(monkeypatch, deployer):
     """Test No J-Link devices connected branch."""
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", 
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", 
                         lambda *a, **k: types.SimpleNamespace(returncode=0, stdout="Empty output", stderr=""))
     with pytest.raises(RuntimeError) as exc:
         deployer.deploy()
@@ -128,14 +128,14 @@ def test_error_no_devices_connected(monkeypatch, deployer):
 def test_device_info_failures(monkeypatch, deployer):
     """Hits lines in deployer.py"""
     # 1. Command itself fails (Line 163)
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", 
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", 
                         lambda *a, **k: types.SimpleNamespace(returncode=1, stdout="", stderr="Crash"))
     with pytest.raises(RuntimeError) as exc:
         deployer._get_device_name("u@h", "123")
     assert "Device info failed" in str(exc.value)
 
     # 2. Command succeeds but output is missing Part Number (Line 168)
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", 
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", 
                         lambda *a, **k: types.SimpleNamespace(returncode=0, stdout="No parts found here!", stderr=""))
     with pytest.raises(RuntimeError) as exc:
         deployer._get_device_name("u@h", "123")
@@ -148,7 +148,7 @@ def test_multiple_devices_invalid_input(monkeypatch, deployer):
             return types.SimpleNamespace(returncode=0, stdout="serialNumber=111\nserialNumber=222", stderr="")
         return types.SimpleNamespace(returncode=0, stdout="Part Number : EFR32", stderr="")
 
-    monkeypatch.setattr("silabs_mlops.model.deployer.subprocess.run", fake_run)
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", fake_run)
     
     # Simulate user typing a number out of range (Scenario for lines 69-71)
     with patch("builtins.input", return_value="99"), pytest.raises(RuntimeError) as exc:

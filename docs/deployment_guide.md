@@ -93,7 +93,7 @@ To allow flashing over USB without root privileges:
 ### Via CLI
 Run the following command from your terminal:
 ```bash
-silabs-mlops model deploy \
+sml ops deploy \
   --uri ./model_path.s37 \
   --rpi-host <RPI_IP_ADDRESS> \
   --rpi-user <USER_NAME> \

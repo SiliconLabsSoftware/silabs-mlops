@@ -1,7 +1,7 @@
 """
-Configuration for Model Deployment.
+Configuration for model deployment.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -9,16 +9,17 @@ from typing import Optional
 class DeployConfig:
     """
     Configuration for deploying models to embedded devices using Simplicity Commander.
-    
+
     Attributes:
-        model_uri: The MLflow Model Registry URI or Artifact Path (e.g., "models:/my_model/Production", "runs:/<run_id>/model.s37").
-        commander_path: Optional path to the Simplicity Commander executable. If not provided, it will be auto-discovered.
+        model_uri: The MLflow Model Registry URI or Artifact Path.
+        commander_path: Optional path to the Simplicity Commander executable.
         device_ip: Optional target device IP address.
         interface: Connection interface (e.g., "swd", "jtag"). Default "swd".
-        verify: Whether to verify the flash after writing. Default True.
-        halt: Whether to halt the core after flashing. Default False.
-        noverify: Whether to skip verification (useful for IP flashing). Default False.
+        verify: Whether to verify the flash after writing.
+        halt: Whether to halt the core after flashing.
+        noverify: Whether to skip verification (useful for IP flashing).
     """
+
     model_uri: str
     commander_path: Optional[str] = "commander"
     device_ip: Optional[str] = None

@@ -1,1 +1,1 @@
-# silabs-mlops
+# sml-ops
