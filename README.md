@@ -97,7 +97,7 @@ Build from the repository root. Commands below assume dependencies are installed
 
 ```bash
 uv pip install pyinstaller
-pyinstaller --onefile --name sml "sml/ops/cli.py"
+uv run pyinstaller --onefile --name sml "sml/ops/cli.py"
 ./dist/sml --help
 ```
 
@@ -105,9 +105,14 @@ pyinstaller --onefile --name sml "sml/ops/cli.py"
 
 ```bash
 uv pip install nuitka zstandard
-/python -m nuitka --onefile --assume-yes-for-downloads --output-dir=dist --output-filename=sml "sml/ops/cli.py"
-./dist/sml --help
+uv run python -m nuitka --onefile --assume-yes-for-downloads --output-dir=dist-nuitka --output-filename=sml-nuitka "sml/ops/cli.py"
+./dist-nuitka/sml-nuitka --help
 ```
+
+Notes:
+
+- PyInstaller also writes `build/`, `sml.spec`, and `dist/sml`.
+- Nuitka also writes `dist-nuitka/cli.build`, `dist-nuitka/cli.dist`, and `dist-nuitka/cli.onefile-build`.
 
 ## Repository layout
 
