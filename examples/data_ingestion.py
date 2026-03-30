@@ -1,7 +1,7 @@
 """
 Simple Usage Examples - SiLabs MLOps Data Library
 """
-from sml.ops import data
+from silabs_mlops import data
 
 # =============================================================================
 # Example 1: Basic Usage - Configure and Ingest
@@ -80,3 +80,47 @@ for i in range(3):
         print(f"✗ Batch {i+1} failed")
     
     time.sleep(2)  # Wait before next reading
+    
+
+# =============================================================================
+# Example 4: Combined File & Metadata Ingestion
+# =============================================================================
+
+# This uploads a local file to a Databricks Volume and sends its metadata 
+# to a Delta Table in one step.
+
+# 1. Configure Credentials 
+data.config(
+    server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
+    workspace_url="https://your-workspace.cloud.databricks.com",
+    table_name="catalog.schema.audio_events",
+    client_id="your-client-id",
+    client_secret="your-client-secret"
+)
+
+# 2. Prepare Metadata
+# IMPORTANT: You must manually create your Databricks Delta Table before 
+# running this. The SDK automatically adds 'file_path' and 'ingest_ts' 
+# to your metadata, so your table schema MUST include these columns.
+#
+# Example SQL:
+# CREATE TABLE <catalog>.<schema>.<table_name> (
+#   device_id STRING, class_label STRING, version STRING,
+#   file_path STRING, ingest_ts TIMESTAMP
+# ) USING DELTA;
+
+metadata = {
+    "device_id": "gateway-01",
+    "class_label": "keyword_detected",
+    "version": "1.0"
+}
+
+# The SDK automatically adds 'file_path' and 'ingest_ts' to the metadata.
+success = data.file_ingest(
+    file_path="local_sample.wav",                             # Local file path where the audio file is stored
+    volume_path="/Volumes/<catalog>/<schema>/<volume>/sample.wav", # Destination Volume path where the audio file will be stored
+    metadata=metadata                                          # Metadata dictionary
+)
+
+if success:
+    print("✓ File and metadata ingested successfully!")
