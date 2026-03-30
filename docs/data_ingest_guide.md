@@ -8,6 +8,7 @@ The entire MLOps package (`data`, `model`, `logs`) uses a **single global config
 - **One-Time Global Configuration**: Configure your Databricks/ZeroBus credentials once — both data ingestion and model profiling reuse the configuration established by `data.config()`.
 - **Zero-Configuration Ingestion**: Simple, programmatic API for sending single or batch records.
 - **Automatic Logging**: Every ingestion attempt (start, success, or error) is automatically tracked in the central CLI logger.
+- **Combined File & Metadata Ingestion**: Use `data.file_ingest()` to upload binary files (like audio/images) to Unity Catalog Volumes and their metadata to Delta Tables in a single call.
 - **Local Buffering**: Supports reading records from local JSON files (JSON Array or JSON Lines).
 - **Secure Authentication**: Integrates with Databricks OAuth Service Principals.
 
@@ -78,6 +79,9 @@ records = [
 data.ingest(records)
 ```
 
+> [!TIP]
+> **When to use `data.ingest()`**: Use this function when you only need to send text, sensor readings, or metadata from the edge side without uploading any physical files (like audio or images).
+
 ---
 
 ## Real IoT Workflow: Continuous Data Collection
@@ -145,6 +149,72 @@ from sml.ops import data
 success = data.ingest_from_file("path/to/sensor_data.json") # -> provide the path to your local buffer file 
 if success:
     print("✓ File data sent to Databricks successfully!")
+```
+
+---
+
+## Combined File & Metadata Ingestion
+For use cases that involve uploading a physical file (like a `.wav` recording) and sending its associated metadata (like timestamp, device ID, and detected label) in a single operation, use `file_ingest()`.
+
+### Usage
+This function performs three tasks in order:
+1. **Reads your local file** into memory.
+2. **Uploads the file** to your Databricks Unity Catalog Volume (the location where all your audio files will be stored).
+3. **Internally calls `data.ingest()`** to send the metadata to your Delta Table.
+
+> [!IMPORTANT]
+> **Mandatory Automatic Columns**: When you call `file_ingest()`, the SDK **automatically adds** the following fields to your metadata dictionary. You **must** include these exact column names in your Databricks table schema, and you do not need to provide them in your metadata dictionary:
+> - **`file_path`**: The full destination path in your Databricks Volume where the audio files will be stored (STRING).
+> - **`ingest_ts`**: The exact timestamp of when the ingestion occurred (TIMESTAMP).
+
+```python
+from silabs_mlops import data
+
+# 1. Provide credentials
+data.config(
+    server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
+    workspace_url="https://your-workspace.cloud.databricks.com",
+    table_name="catalog.schema.audio_events",
+    client_id="your-service-principal-id",
+    client_secret="your-service-principal-secret"
+)
+
+# 2. Prepare metadata
+# Note: As the fields 'file_path' & 'ingest_ts' are automatically added to the metadata dictionary, 
+# you must create the table with schema that includes these 2 fields also in Databricks.
+metadata = {
+    "device_id": "rpi-gateway-01",
+    "timestamp": 1711567890.0,
+    "label": "door_knock",
+}
+
+# 3. Perform combined ingestion
+Combined ingestion allows you to upload a file to a Databricks Volume and send its metadata to a Delta Table in one step. 
+
+success = data.file_ingest(
+    file_path="local_sample.wav",                             # Add your local path where the files are stored
+    volume_path="/Volumes/main/default/audio/sample_01.wav",  # provide the full volume path in Databricks where the audio file will be stored
+    metadata=metadata                                          # Dictionary of metadata for the Delta Table
+)
+
+if success:
+    print("✓ File uploaded and metadata ingested!")
+```
+
+> [!IMPORTANT]
+> **Manual Table Creation Required**: Before using `file_ingest()` or `ingest()`, you **must** manually create your destination table in Databricks with a schema that matches your metadata keys. ZeroBus does not create the table for you.
+>
+> **Example SQL**:
+```sql
+CREATE TABLE main.default.iot_metadata (
+  device_id STRING,
+  timestamp DOUBLE,
+  label STRING,
+  -- These columns are automatically provided by the file_ingest() function 
+  -- and must be added to your table schema:
+  file_path STRING,    -- Stores the Volume path to the physical file
+  ingest_ts TIMESTAMP  -- Stores the exact time of ingestion
+) USING DELTA;
 ```
 
 ---

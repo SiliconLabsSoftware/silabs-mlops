@@ -60,7 +60,7 @@ from silabs_mlops import ble
 ble.config(
     device_name=os.getenv("BLE_DEVICE_NAME"),
     device_address=os.getenv("BLE_DEVICE_ADDRESS"),
-    voice_result_uuid=os.getenv("BLE_RESULT_UUID"),
+    voice_result_uuid=os.getenv("BLE_RESULT_UUID"),   #<- metadata UUID
     audio_data_uuid=os.getenv("BLE_DATA_UUID"),
     output_dir=os.getenv("AUDIO_SAMPLES_DIR"),
     sample_rate=os.getenv("BLE_SAMPLE_RATE", 16000),  # <- (optional) replace these values with your own values
@@ -105,7 +105,7 @@ DEVICE_NAME = os.getenv("BLE_DEVICE_NAME", "<YOUR_DEVICE_NAME>")
 
 The `labels` list is the most critical configuration step. Every Silicon Labs keyword spotting firmware assigns an integer **Class ID** (0, 1, 2...) to each keyword it can detect. The `labels` list is your way of telling the SDK what each Class ID means in plain English.
 
-> **How to find your keywords**: The firmware your board runs assigns an integer **Class ID** (0, 1, 2...) to each keyword it was trained to detect. Check your Simplicity Studio project's class or label definitions to see which Class ID corresponds to which keyword (check for files like `sl_ml_model.h` or `app_voice.h` to see your keyword order). The order and names there is exactly what your `labels` list must mirror. If you add new keywords in the future by retraining the model, simply update this list to match. 
+> **How to find your keywords**: The firmware your board runs assigns an integer **Class ID** (0, 1, 2...) to each keyword it was trained to detect. Check your Simplicity Studio project's class or label definitions to see which Class ID corresponds to which keyword (check for files like eg., ` audio_classifier_config.h` or `app_voice.h` to see your keyword order). The order and names there is exactly what your `labels` list must mirror. If you add new keywords in the future by retraining the model, simply update this list to match. 
 
 You can provide labels in **two ways**:
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
 ```
 
 ### What Happens Internally:
-1. The receiver scans for your board by its `device_name` or `device_address`.
+1. The receiver scans for your board by its `device_name`.
 2. Once connected, it subscribes to both GATT characteristics (voice result and audio data).
 3. When the board's on-device AI detects a keyword, it sends an 8-byte packet. The SDK decodes it and maps the Class ID to your `labels` list.
 4. The raw audio bytes that follow are collected and saved as a `.wav` file in your `output_dir`.

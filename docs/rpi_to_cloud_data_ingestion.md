@@ -1,4 +1,4 @@
-# Data Ingestion System – User Guide
+# RPI to Cloud Data Ingestion– User Guide
 
 This guide provides simple instructions for running the data ingestion system on the Raspberry Pi. We use a three-script architecture to automatically collect audio from the BLE board and upload it to your Databricks Delta Tables.
 
@@ -11,7 +11,7 @@ This guide provides simple instructions for running the data ingestion system on
 - **The Silicon Labs MLOps SDK**: `pip install silabs-mlops`
   - *Install this SDK to access the `silabs_mlops.ble` and `silabs_mlops.data` libraries used by the gateway scripts. It automatically installs all required dependencies including `bleak`, `numpy`, and `requests`.*
 - **Commander-cli_linux_aarch64**:
-  - *Install this commander-cli (Linux version-ARM64) from Silicon labs or [click here](https://www.silabs.com/software-and-tools/simplicity-studio/simplicity-commander?tab=getting-started) to download it and export the commander-cli path  
+  - *Install this commander-cli (Linux version-ARM64) from Silicon labs or [click here](https://www.silabs.com/software-and-tools/simplicity-studio/simplicity-commander?tab=getting-started) to download it and export the commander-cli path*  
 
 Before running the system, ensure the following:
 
@@ -26,7 +26,7 @@ Before running the system, ensure the following:
 
 Before running the system, you must update the following scripts with your specific details:
 
-### 🔹 `ble_receiver.py` (Hardware Settings)
+### 🔹 `ble_receiver.py` 
 
 This script uses the `silabs_mlops.ble` SDK library to handle all Bluetooth communication. It calls `ble.config()` to pass your board's details to the library, then starts a `BLEReceiver` loop that connects, listens for keyword detections, and saves audio files automatically.
 
@@ -50,7 +50,7 @@ Open `ble_receiver.py` and replace the placeholders:
 ```python
 DEVICE_NAME = os.getenv("BLE_DEVICE_NAME", "<YOUR_DEVICE_NAME>")          
 DEVICE_ADDRESS = os.getenv("BLE_DEVICE_ADDRESS", "<YOUR_MAC_ADDRESS>")        
-VOICE_RESULT_UUID = os.getenv("BLE_RESULT_UUID", "<YOUR_VOICE_RESULT_UUID>")  
+VOICE_RESULT_UUID = os.getenv("BLE_RESULT_UUID", "<YOUR_VOICE_RESULT_UUID>")  #<- your metadata UUID
 AUDIO_DATA_UUID = os.getenv("BLE_DATA_UUID", "<YOUR_AUDIO_DATA_UUID>")        
 OUTPUT_DIR = os.getenv("AUDIO_SAMPLES_DIR", "<YOUR_LOCAL_PATH>")              
 SAMPLE_RATE = os.getenv("BLE_SAMPLE_RATE", 16000)    # <- (optional) replace these values with your own values 
@@ -62,7 +62,7 @@ _labels_env = os.getenv("BLE_LABELS")
 LABELS = _labels_env.split(",") if _labels_env else ["<keyword1>", "<keyword2>", "unknown"]
 ```
 
-> **LABELS – Most Important!** The firmware your board runs assigns an integer **Class ID** (0, 1, 2...) to each keyword it detects. Your `labels` list must match this exact order. Check your Simplicity Studio project (e.g., `sl_ml_model.h` or `app_voice.h`) to find your keyword order. If you retrain with new keywords, just update this list!
+> **LABELS – Most Important!** The firmware your board runs assigns an integer **Class ID** (0, 1, 2...) to each keyword it detects. Your `labels` list must match this exact order. Check your Simplicity Studio project (e.g., `audio_classifier_config.h` or `app_voice.h`) to find your keyword order. If you retrain with new keywords, just update this list!
 > ```python
 > # Example: if your firmware defines Class 0 = "on", Class 1 = "off", Class 2 = "unknown"
 > LABELS = ["on", "off", "unknown"]
@@ -92,7 +92,7 @@ os.environ["AUDIO_SAMPLES_DIR"] = "/path/to/your/audio_samples"
 
 > For details on obtaining these databricks credentials, refer to the [Databricks Setup Guide](databricks_setup_guide.md).
 
-### 🔹 `ingestion_engine.py` (Device Info Settings)
+### 🔹 `ingestion_engine.py` 
 
 This script uses **Simplicity Commander** to automatically read your connected SiLabs board's hardware ID and name. You must point it to where you installed Simplicity Commander on your Raspberry Pi.
 
@@ -110,6 +110,15 @@ COMMANDER_PATH = os.getenv("COMMANDER_PATH", "/path/to/your/commander-cli")  # <
 
 > If Simplicity Commander is not installed or the path is wrong, the script will skip hardware ID detection and use a generic Raspberry Pi identifier instead. The ingestion will still work normally.
 
+#### Handle High-Volume Ingestion (Optional)
+
+This script handles multiple simultaneous uploads using **worker threads**. If you have many audio files coming in at once, you can increase this number:
+
+- **Variable**: `NUM_WORKERS` (Default: `4`)
+- **Recommendation**: Keep this **below 7** on a Raspberry Pi to avoid system slowdown.
+- **Option A (Environment Variable)**: `export NUM_WORKERS=6`
+- **Option B (Direct Edit)**: Edit `NUM_WORKERS = int(os.getenv("NUM_WORKERS", "4"))` in `ingestion_engine.py`.
+
 ---
 
 ## 3. Overview
@@ -125,7 +134,7 @@ You will manually start only **two** of them:
 
 ### `ble_receiver.py`
 - Connects to the BLE board via Bluetooth.
-- Receives raw audio from the BLE device and classifies keywords using the firmware's on-device AI model.
+- Receives raw audio and metadata from the BLE device.
 - Saves the detected audio as `.wav` files into the local folder that the upload system monitors.
 
 ### `ingestion_service.py`
