@@ -33,7 +33,7 @@ sys.modules["pkg.receiver"] = receiver_mod
 # ──────────────────────────────────────────────────
 # IMPORT Module under test
 # ──────────────────────────────────────────────────
-import sml.ops.ble as pkg   # ✅ Only required change
+import sml.ops.ble as pkg   
 
 # ──────────────────────────────────────────────────
 # Tests
