@@ -1,20 +1,37 @@
+[project]
+name = "silabs-mlops"
+version = "0.1.0"
+description = "Professional Silicon Labs MLOps SDK for edge devices and Databricks."
+readme = "readme.md"
+requires-python = ">=3.9"
+dependencies = [
+    "click",
+    "requests",
+    "python-dotenv",
+    "PyYAML",
+    "databricks-zerobus-ingest-sdk>=0.2.0",
+    "grpcio>=1.48.0",
+    "protobuf>4.25,<7",
+    "mlflow>=2.10.0",
+    "tensorflow>=2.15.0",
+    "numpy>=2.2.0",
+    "bleak",
+]
+
+[project.scripts]
+silabs-mlops = "silabs_mlops.cli:main"
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
-[project]
-name = "silabs-mlops"
-version = "0.1.0"
-description = "Pipeline for training optimized models using a Teacher-Student knowledge distillation approach."
-readme = "docs/custom_model_training_guide.md"
-requires-python = ">=3.8"
-dependencies = [
-    "silabs-mltk",
-    "audiomentations",
-    "noisereduce",
-    "pyloudnorm",
-    "librosa",
-    "tensorflow",
-    "scikit-learn",
-    "tensorflow-model-optimization"
-]
+
+[tool.setuptools.packages.find]
+exclude = ["tests*", "tests"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=silabs_mlops.model --cov-report=term-missing"
+testpaths = ["tests"]
+
+
+

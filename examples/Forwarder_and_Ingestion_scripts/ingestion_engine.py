@@ -11,13 +11,24 @@ from pathlib import Path
 from datetime import datetime, timezone
 import re
 import subprocess
+import wave # Required to read metadata from audio files
 
 # Path to Simplicity Commander
-COMMANDER_PATH = r"<PATH_TO_COMMANDER_CLI>" # e.g., "C:/SimplicityCommander/commander.exe"
+COMMANDER_PATH = os.getenv("COMMANDER_PATH", str(Path.home() / "Desktop/SimplicityCommander-Linux/commander-cli/commander-cli")) # <- replace this path with your own commander-cli path
+
+# Global cache for hardware info to prevent redundant subprocess calls
+_hw_cache = {"name": None, "id": None}
+_hw_lock = threading.Lock()
 
 def get_hw_info():
     """Runs commander-cli to find part number and unique ID from the connected board."""
-    if not os.path.exists(COMMANDER_PATH):
+    global _hw_cache
+    
+    with _hw_lock:
+        if _hw_cache["name"] is not None:
+            return _hw_cache["name"], _hw_cache["id"]
+
+    if not Path(COMMANDER_PATH).exists():
         return None, None
     try:
         # 1. Get adapter list to find any connected device's serial number
@@ -34,6 +45,11 @@ def get_hw_info():
 
         part = part_match.group(1).strip() if part_match else None
         uid = uid_match.group(1).strip() if uid_match else None
+        
+        with _hw_lock:
+            _hw_cache["name"] = part
+            _hw_cache["id"] = uid
+            
         return part, uid
     except Exception:
         return None, None
@@ -41,16 +57,23 @@ def get_hw_info():
 # -----------------------------
 # Configuration & Environment
 # -----------------------------
-# These should be set in your OS environment or a .env file
 WORKSPACE_URL = os.getenv("ZEROBUS_WORKSPACE_URL")
 CLIENT_ID = os.getenv("ZEROBUS_CLIENT_ID")
 CLIENT_SECRET = os.getenv("ZEROBUS_CLIENT_SECRET")
 SERVER_ENDPOINT = os.getenv("ZEROBUS_SERVER_ENDPOINT")
 TABLE_NAME = os.getenv("ZEROBUS_TABLE_NAME")
-VOLUME_PATH_BASE = os.getenv("DATABRICKS_VOLUME_PATH")
+VOLUME_PATH = os.getenv("DATABRICKS_VOLUME_PATH")
 
-# Local directory to monitor
-MONITOR_DIR = r"<PATH_TO_MONITOR_DIR>" # Should match Ble_receiver's OUTPUT_DIR
+# Local directory to monitor (Must be set via AUDIO_SAMPLES_DIR environment variable)
+MONITOR_DIR_PATH = os.getenv("AUDIO_SAMPLES_DIR")
+if not MONITOR_DIR_PATH:
+    raise EnvironmentError("AUDIO_SAMPLES_DIR is not set. Run via 'python ingestion_service.py' to configure.")
+MONITOR_DIR = Path(MONITOR_DIR_PATH)
+
+# Number of worker threads for parallel upload (Optional)
+# You can set this via environment variable 'NUM_WORKERS' or directly here.
+# For Raspberry Pi, it's recommended to keep this below 7 to save resources.
+NUM_WORKERS = int(os.getenv("NUM_WORKERS", "4")) 
 
 # SDK imports
 try:
@@ -63,58 +86,7 @@ except Exception:
 # Logger Setup
 # -----------------------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
-logger = logging.getLogger("CloudIngestor")
-
-# -----------------------------
-# Databricks Helpers
-# -----------------------------
-def get_oauth_token():
-    if not (WORKSPACE_URL and CLIENT_ID and CLIENT_SECRET):
-        return None
-    token_url = f"{WORKSPACE_URL.rstrip('/')}/oidc/v1/token"
-    try:
-        r = requests.post(
-            token_url,
-            data={
-                "grant_type": "client_credentials",
-                "client_id": CLIENT_ID,
-                "client_secret": CLIENT_SECRET,
-                "scope": "all-apis",
-            },
-            timeout=10
-        )
-        r.raise_for_status()
-        return r.json()["access_token"]
-    except Exception as e:
-        logger.error(f"OAuth token fetch failed: {e}")
-        return None
-
-def to_volume_posix(p: str) -> str:
-    p = str(p).replace("\\", "/")
-    if p.startswith("dbfs:/"):
-        p = p.replace("dbfs:/", "/")
-    parts = [seg for seg in p.split("/") if seg]
-    p = "/" + "/".join(parts)
-    if not p.startswith("/Volumes/"):
-        return f"/Volumes/{p.lstrip('/')}" # Try to force Volumes prefix
-    return p
-
-def dbx_put_file(token, file_bytes, volume_path):
-    volume_path = to_volume_posix(volume_path)
-    url = f"{WORKSPACE_URL.rstrip('/')}/api/2.0/fs/files{volume_path}"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/octet-stream",
-    }
-    try:
-        r = requests.put(url, headers=headers, data=file_bytes, params={"overwrite": "true"}, timeout=30)
-        if r.status_code not in (200, 204):
-            logger.error(f"Files API error {r.status_code}: {r.text}")
-            return False
-        return True
-    except Exception as e:
-        logger.error(f"Upload failed: {e}")
-        return False
+logger = logging.getLogger("MultiCloudIngestor")
 
 # -----------------------------
 # Worker Threads
@@ -128,19 +100,18 @@ def directory_monitor_thread():
     
     while True:
         try:
-            if not os.path.exists(MONITOR_DIR):
-                os.makedirs(MONITOR_DIR, exist_ok=True)
+            MONITOR_DIR.mkdir(parents=True, exist_ok=True)
             
             files = [f for f in os.listdir(MONITOR_DIR) if f.lower().endswith('.wav')]
             for f in files:
-                fpath = os.path.join(MONITOR_DIR, f)
-                if fpath not in seen_files:
+                fpath = MONITOR_DIR / f
+                if str(fpath) not in seen_files:
                     logger.info(f"New file detected: {f}")
-                    file_queue.put(fpath)
-                    seen_files.add(fpath)
+                    file_queue.put(str(fpath))
+                    seen_files.add(str(fpath))
             
             # Clean up seen_files for files that were moved/deleted
-            current_paths = {os.path.join(MONITOR_DIR, f) for f in files}
+            current_paths = {str(MONITOR_DIR / f) for f in files}
             seen_files &= current_paths
             
         except Exception as e:
@@ -148,11 +119,11 @@ def directory_monitor_thread():
             
         time.sleep(1)
 
-def uploader_thread():
-    """Thread 2: Moves files to the cloud and deletes local copies."""
-    logger.info("Uploader started")
+def uploader_thread(worker_id):
+    """Worker Thread: Moves files to the cloud in parallel and deletes local copies."""
+    logger.info(f"Worker-{worker_id} started")
     
-    # Initialize ZeroBus once
+    # Initialize ZeroBus once per thread (or shared if SDK allows)
     if ZEROBUS_AVAILABLE:
         try:
             zerobus_data.config(
@@ -162,86 +133,68 @@ def uploader_thread():
                 client_id=CLIENT_ID,
                 client_secret=CLIENT_SECRET,
             )
-            logger.info("ZeroBus SDK configured")
         except Exception as e:
-            logger.error(f"ZeroBus config failed: {e}")
-
-    token = None
-    token_expiry = 0
+            logger.error(f"Worker-{worker_id} ZeroBus config failed: {e}")
 
     while True:
         fpath = file_queue.get()
         try:
-            # Refresh token if needed
-            if time.time() > token_expiry - 60:
-                token = get_oauth_token()
-                if token:
-                    token_expiry = time.time() + 3500 # Assume ~1hr life
-            
-            if not token:
-                logger.error("No valid token, skipping upload")
-                file_queue.put(fpath) # Retry later
-                time.sleep(5)
-                continue
-
-            # Load file
-            with open(fpath, 'rb') as f:
-                wav_bytes = f.read()
-            
             fname = os.path.basename(fpath)
-            # Parse Format: label_address_name_timestamp.wav
+            # Parse Format: label_timestamp.wav
             parts = fname.replace('.wav', '').split('_')
+            label = parts[0] if parts else "unknown"
             
-            # --- Hardware Detection via Commander CLI ---
+            # --- Auto-Detection of Audio Params via WAV Header ---
+            file_sample_rate = 16000 # Default
+            try:
+                with wave.open(fpath, "rb") as wf:
+                    file_sample_rate = wf.getframerate()
+            except Exception as e:
+                logger.error(f"Worker-{worker_id}: Could not read WAV header for {fname}: {e}")
+
+            # --- Hardware Detection via Commander CLI (Cached) ---
             hw_name, hw_id = get_hw_info()
             
             if hw_name and hw_id:
-                label = parts[0]
                 device_id = hw_id
                 device_name = hw_name
-            elif len(parts) >= 3:
-                label = parts[0]
-                device_id = parts[1]
-                device_name = parts[2].replace('-', ' ') # Restore spaces
             else:
-                label = parts[0] if parts else "unknown"
                 device_id = f"Pi-{uuid.getnode():x}"
                 device_name = "Raspberry Pi Voice Gateway"
 
+            # 1 & 2. Comprehensive Ingestion (Upload + Metadata)
+            dest_path = f"{VOLUME_PATH.rstrip('/')}/{fname}"
             
-            # 1. Upload to Databricks Volume
-            dest_path = f"{VOLUME_PATH_BASE.rstrip('/')}/{fname}"
-            if dbx_put_file(token, wav_bytes, dest_path):
-                logger.info(f"Uploaded {fname} to UC Volume")
+            metadata = {
+                "device_id":   device_id,
+                "device_name": device_name,
+                "file_name":   fname,
+                "class_label": label,
+                "content_type": "audio/wav",
+                "sample_rate": file_sample_rate,
+                "duration_ms": 1000,
+            }
+            
+            if ZEROBUS_AVAILABLE:
+                logger.info(f"Worker-{worker_id} uploading {fname}...")
+                success = zerobus_data.file_ingest(
+                    file_path=fpath,
+                    volume_path=dest_path,
+                    metadata=metadata
+                )
                 
-                # 2. Ingest Metadata to ZeroBus
-                if ZEROBUS_AVAILABLE:
-                    event = {
-                        "device_id":   device_id,
-                        "device_name": device_name,
-                        "file_name":   fname,
-                        "file_path":   to_volume_posix(dest_path),
-                        "class_label": label,
-                        "content_type": "audio/wav",
-                        "sample_rate": 16000,
-                        "duration_ms": 1000,
-                        "ingest_ts":   int(time.time() * 1_000_000),
-                    }
-                    try:
-                        zerobus_data.ingest([event])
-                        logger.info(f"Ingested metadata for {fname}")
-                    except Exception as e:
-                        logger.error(f"ZeroBus ingest failed for {fname}: {e}")
-                
-                # 3. Success -> Delete local file
-                os.remove(fpath)
-                logger.info(f"Removed local file {fname}")
+                if success:
+                    logger.info(f"Worker-{worker_id} successfully processed {fname}")
+                    # 3. Success -> Delete local file
+                    if os.path.exists(fpath):
+                        os.remove(fpath)
+                else:
+                    logger.error(f"Worker-{worker_id} failed to process {fname}, keeping local copy")
             else:
-                logger.error(f"Failed to upload {fname}, keeping local copy")
-                # Add back to queue? No, maybe just log it.
+                logger.error(f"Worker-{worker_id}: ZeroBus SDK not available, cannot ingest.")
 
         except Exception as e:
-            logger.error(f"Uploader error processing {fpath}: {e}")
+            logger.error(f"Worker-{worker_id} error processing {fpath}: {e}")
         finally:
             file_queue.task_done()
 
@@ -252,15 +205,22 @@ def main():
     if not WORKSPACE_URL:
         logger.error("Missing mandatory environment variables. Please set ZEROBUS_WORKSPACE_URL, etc.")
     else:
-        t1 = threading.Thread(target=directory_monitor_thread, daemon=True)
-        t2 = threading.Thread(target=uploader_thread, daemon=True)
+        # Start directory monitor
+        t_monitor = threading.Thread(target=directory_monitor_thread, daemon=True)
+        t_monitor.start()
         
-        t1.start()
-        t2.start()
+        # Start multiple worker threads
+        logger.info(f"Starting {NUM_WORKERS} worker threads for ingestion...")
+        for i in range(NUM_WORKERS):
+            t_worker = threading.Thread(target=uploader_thread, args=(i,), daemon=True)
+            t_worker.start()
         
-        logger.info("Cloud Ingestor system running. Press Ctrl+C to stop.")
+        logger.info("Multi-threaded Cloud Ingestor system running. Press Ctrl+C to stop.")
         try:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
             logger.info("Stopping...")
+
+if __name__ == "__main__":
+    main()
