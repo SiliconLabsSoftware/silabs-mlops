@@ -1,38 +1,32 @@
 import os
-import sys
 
 # ========================
 # Databricks / ZeroBus Credentials
-# Provide your own credentials below
 # ========================
+# Update these with your own Databricks/ZeroBus credentials
 os.environ["ZEROBUS_WORKSPACE_URL"] = "https://<your-workspace-url>.azuredatabricks.net"
 os.environ["ZEROBUS_CLIENT_ID"] = "<your-service-principal-client-id>"
 os.environ["ZEROBUS_CLIENT_SECRET"] = "<your-service-principal-client-secret>"
+
+# ZeroBus Endpoint and Table
 os.environ["ZEROBUS_SERVER_ENDPOINT"] = "<your-workspace-id>.zerobus.<region>.azuredatabricks.net"
 os.environ["ZEROBUS_TABLE_NAME"] = "<catalog>.<schema>.<table_name>"
 
-# Databricks Volume Path
-# Provide your UC Volume path. Example: "/Volumes/main/default/audio_data"
+# Databricks Volume Path (Example: "/Volumes/main/default/audio_data")
 os.environ["DATABRICKS_VOLUME_PATH"] = "/Volumes/<catalog>/<schema>/<volume>"
+
+# Local directory to monitor (Must match ble_receiver.py)
+os.environ["AUDIO_SAMPLES_DIR"] = "/path/to/your/audio_samples"
 
 # ========================
 # Run the Ingestor
 # ========================
-import examples.Forwarder_and_Ingestion_scripts.ingestion_engine as ingestion_engine
+# Option 1: Standard Ingestion (Processes & uploads one file at a time)
+import sequential_ingestion_engine
 
-# Force gTTS mode (real speech)
-sys.argv.append("--synth-mode")
-sys.argv.append("gTTS")
+# Option 2: High-Volume Simultaneous Ingestion (Processes & uploads multiple files at once)
+# (Uncomment the line below and comment Option 1 to enable parallel uploading)
+# import batch_ingestion_engine as sequential_ingestion_engine
 
-# Optional defaults (you can omit these if CLI already provides them)
-sys.argv.append("--labels")
-sys.argv.append("left,right,on,off,stop,go")
-
-sys.argv.append("--device-pool-size")
-sys.argv.append("5")
-
-sys.argv.append("--interval-sec")
-sys.argv.append("1")
-
-# Start Ingestion
-ingestion_engine.main()
+if __name__ == "__main__":
+    sequential_ingestion_engine.main()
