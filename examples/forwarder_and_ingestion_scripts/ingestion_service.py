@@ -21,7 +21,12 @@ os.environ["AUDIO_SAMPLES_DIR"] = "/path/to/your/audio_samples"
 # ========================
 # Run the Ingestor
 # ========================
-import ingestion_engine
+# Option 1: Standard Ingestion (Processes & uploads one file at a time)
+import sequential_ingestion_engine
+
+# Option 2: High-Volume Simultaneous Ingestion (Processes & uploads multiple files at once)
+# (Uncomment the line below and comment Option 1 to enable parallel uploading)
+# import batch_ingestion_engine as sequential_ingestion_engine
 
 if __name__ == "__main__":
-    ingestion_engine.main()
+    sequential_ingestion_engine.main()
