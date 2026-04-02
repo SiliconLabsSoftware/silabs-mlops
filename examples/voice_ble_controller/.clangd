@@ -1,0 +1,4 @@
+CompileFlags:
+  CompilationDatabase: cmake_gcc/build
+  Compiler: arm-none-eabi-gcc
+  BuiltinHeaders: QueryDriver
