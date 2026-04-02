@@ -122,6 +122,11 @@ component:
   vendor: silabs
   id: simple_button
 - package: simplicity_sdk
+  instance:
+  - led1
+  vendor: silabs
+  id: simple_led
+- package: simplicity_sdk
   vendor: silabs
   id: sl_main
 other_file:
