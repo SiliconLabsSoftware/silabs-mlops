@@ -5,6 +5,7 @@ description = "Silicon Labs MLOps SDK for edge devices and Databricks."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+  "bleak",
   "click>=8.3.1",
   "databricks-zerobus-ingest-sdk>=1.1.0",
   "dotenv>=0.9.9",
