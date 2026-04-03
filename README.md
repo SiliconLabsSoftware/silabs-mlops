@@ -41,16 +41,18 @@ The Silicon Labs MLOps SDK is a professional toolset designed to seamlessly brid
 ## SDK Structure
 
 ```text
-silabs_mlops/
-├── ble/            (Bluetooth connectivity)
-├── data/
-│   └── ingest/     (ZeroBus integration)
-├── model/
-│   ├── profile/    (NPU Profiler)
-│   └── deploy/     (RPi Deployer)
-├── common/         (Auth & Validators)
-├── config/         (Global configuration)
-└── cli.py          (Main CLI entry point)
+sml/
+└── ops/
+    ├── ble/                (Bluetooth connectivity)
+    ├── data/
+    │   └── ingest/         (ZeroBus integration)
+    ├── model/
+    │   ├── profiler.py     (NPU Profiler)
+    │   └── deployer.py     (Edge Deployer)
+    ├── common/             (Auth & Validators)
+    ├── config.py           (Global configuration)
+    ├── logs.py             (Universal Logger)
+    └── cli.py              (Main CLI entry point)
 ```
 
 ## Requirements

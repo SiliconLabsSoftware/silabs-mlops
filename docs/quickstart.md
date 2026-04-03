@@ -69,7 +69,7 @@ If you are writing a Python script, you can provide credentials once at the star
 #### **Option 1: Using Environment Variables**
 ```python
 import os
-from silabs_mlops import data
+from sml.ops import data
 
 data.config(
     server_endpoint=os.getenv("ZEROBUS_SERVER_ENDPOINT"),
@@ -82,7 +82,7 @@ data.config(
 
 #### **Option 2: Direct Hardcoding**
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 data.config(
     server_endpoint="your-zerobus-endpoint.databricks.com",
@@ -104,10 +104,10 @@ artifacts:
 ---
 
 ## Bluetooth Connectivity (ble)
-The `silabs_mlops.ble` module allows you to discover and connect to your Silicon Labs hardware via Bluetooth to collect real-time sensor and audio data.
+The `sml.ops.ble` module allows you to discover and connect to your Silicon Labs hardware via Bluetooth to collect real-time sensor and audio data.
 
 ```python
-from silabs_mlops import ble
+from sml.ops import ble
 
 # Configure the BLE connection with all your required parameters
 ble.config(
@@ -136,7 +136,7 @@ Stream IoT sensor data from edge devices directly into Databricks Delta Tables (
 Configure your Databricks credentials (once at startup either by fetching your system's environment variables (using `os.getenv()`) inside `data.config()` or by providing the strings directly)
 
 ```python
-from silabs_mlops import data
+from sml.ops import data
 # Provided credentials directly 
 data.config(
     server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
@@ -151,7 +151,7 @@ data.config(
 You can send a list of dictionaries (records) directly to your Databricks table.
 
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 records = [
     {"device_id": "sensor-01", "temp": 24.5, "unit": "C"},
@@ -166,7 +166,7 @@ In many IoT scenarios, you want to collect and send data continuously in a loop.
 
 ```python
 import time
-from silabs_mlops import data
+from sml.ops import data
 
 # Configure once at application startup
 data.config(
@@ -212,7 +212,7 @@ while True:
 To ingest files like audio or binary files via BLE, images, and other binary data into Databricks Unity Catalog Volumes along with their metadata, use the `file_ingest()` function. This combines both the file upload and the metadata record ingestion into a single, reliable command.
 
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 # 1. Configure credentials
 data.config(
@@ -253,7 +253,7 @@ Analyze your model's performance on the NPU before deployment. For detailed info
 You can automatically upload all profiling results to a Databricks Volume by providing a `volume_path`.
 
 ```python
-from silabs_mlops import model
+from sml.ops import model
 
 result = model.profile(
     model_path="models/my_model.tflite", #-> add your model path here
@@ -271,7 +271,7 @@ print(f"Remote Results: {result.output_dir}")
 Upload the firmware/model to a remote Raspberry Pi and flash it to the physical device.
 
 ```python
-from silabs_mlops.model.deployer import RPiDeployer
+from sml.ops.model.deployer import RPiDeployer
 
 deployer = RPiDeployer(
     rpi_host="host_ip",
@@ -297,7 +297,7 @@ The CLI keeps a local history of every operation. This is your first stop for tr
 ### Viewing Logs in Python
 The `Logger` class allows you to programmatically inspect the history:
 ```python
-from silabs_mlops.logs import Logger
+from sml.ops.logs import Logger
 
 logger = Logger()
 # Filter and view profiling events

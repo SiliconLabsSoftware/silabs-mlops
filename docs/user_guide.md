@@ -64,7 +64,7 @@ If you are writing a Python script, you can provide credentials once at the star
 #### **Option 1: Fetching from Environment Variables (Recommended)**
 ```python
 import os
-from silabs_mlops import data
+from sml.ops import data
 
 data.config(
     server_endpoint=os.getenv("ZEROBUS_SERVER_ENDPOINT"),
@@ -77,7 +77,7 @@ data.config(
 
 #### **Option 2: Direct Configuration**
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 data.config(
     server_endpoint="your-zerobus-endpoint.databricks.com",
@@ -119,10 +119,10 @@ If you storage profiling results or logs in Databricks Volumes:
 
 ## Bluetooth Connectivity (ble module)
 
-The `silabs_mlops.ble` module handles Bluetooth Low Energy (BLE) connections to Silicon Labs hardware for real-time sensor and audio data collection.
+The `sml.ops.ble` module handles Bluetooth Low Energy (BLE) connections to Silicon Labs hardware for real-time sensor and audio data collection.
 
 ```python
-from silabs_mlops import ble
+from sml.ops import ble
 
 # Configure the BLE connection with all your required parameters
 ble.config(
@@ -153,12 +153,11 @@ For detailed information, see the [data_ingest_guide.md](data_ingest_guide.md).
 - **Local Buffering**: Supports reading from local JSON files (Array or Lines).
 
 ### Quick Start (Python API)
-```python
-from silabs_mlops import data
 
+```python
 # 1. Configure once (either by fetching your system's environment variables (using `os.getenv()`) inside `data.config()` or by providing the strings directly.)
 import os
-from silabs_mlops import data
+from sml.ops import data
 # Fetching system's environment variables (using `os.getenv()`) inside `data.config()`  
 data.config(
     server_endpoint=os.getenv("ZEROBUS_SERVER_ENDPOINT"),
@@ -177,7 +176,7 @@ data.ingest(records)
 Use `file_ingest()` to upload binary files (audio, images, etc.) to a Databricks Volume and record their metadata in a Delta Table simultaneously. Note: `file_path` and `ingest_ts` are added automatically by the SDK; no need to provide them in your Python metadata dictionary but you must create the table with schema that includes these 2 fields also in Databricks to avoid **Schema Mismatch** errors.
 
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 # Configure credentials
 data.config(
@@ -207,7 +206,7 @@ The library can automatically read and upload data from local "buffer" files.
 To sync a local file to Databricks, use the `ingest_from_file` function. This is the most robust way to handle local buffers.
 
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 # Ingest from file (uses the same configuration from above)
 success = data.ingest_from_file("path/to/sensor_data.json") # -> provide the path to your local buffer file 
@@ -230,7 +229,7 @@ The model profiling library provides a Python wrapper around the Silicon Labs NP
 
 ### Quick Start
 ```python
-from silabs_mlops import model
+from sml.ops import model
 
 # Profile on discovered hardware
 result = model.profile("my_model.tflite")
@@ -244,7 +243,7 @@ print(f"Arena Size: {result.arena_size_kb} KB | Total MACs: {result.total_macs}"
 You can automatically upload all profiling results to a Databricks Volume by providing a `volume_path`.
 
 ```python
-from silabs_mlops import model
+from sml.ops import model
 
 result = model.profile(
     model_path="models/my_model.tflite", #-> add your model path here
@@ -290,7 +289,7 @@ Every activity—whether it's data ingestion, model profiling, or deployment—i
 ### Viewing Logs in Python
 The `Logger` class allows you to programmatically inspect the history:
 ```python
-from silabs_mlops.logs import Logger
+from sml.ops.logs import Logger
 
 logger = Logger()
 # Filter and view profiling events

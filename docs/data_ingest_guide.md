@@ -168,7 +168,7 @@ This function performs three tasks in order:
 > - **`ingest_ts`**: The exact timestamp of when the ingestion occurred (TIMESTAMP).
 
 ```python
-from silabs_mlops import data
+from sml.ops import data
 
 # 1. Provide credentials
 data.config(
