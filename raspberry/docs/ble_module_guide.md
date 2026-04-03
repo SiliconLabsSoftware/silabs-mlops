@@ -2,7 +2,7 @@
 
 The Silicon Labs MLOps SDK's `ble` library provides a high-level API for connecting to Silicon Labs edge devices via Bluetooth Low Energy (BLE), receiving audio streams, and handling voice detection events.
 
-> A ready-to-use example script is provided at `examples/Data_forwarder_and_ingestion/ble_receiver.py`. You can copy and edit this script directly for your project.
+> A ready-to-use example script is provided at `raspberry/forwarder_and_ingestion_scripts/ble_receiver.py`. You can copy and edit this script directly for your project.
 
 ---
 
@@ -55,7 +55,7 @@ export BLE_LABELS="<keyword1>,<keyword2>,unknown"
 **In your script, they are read automatically:**
 ```python
 import os
-from silabs_mlops import ble
+from sml.ops import ble
 
 ble.config(
     device_name=os.getenv("BLE_DEVICE_NAME"),
@@ -76,7 +76,7 @@ ble.config(
 The simplest approach for testing. You can type your values directly into the `ble.config()` call:
 
 ```python
-from silabs_mlops import ble
+from sml.ops import ble
 
 ble.config(
     device_name="<YOUR_DEVICE_NAME>",
@@ -92,7 +92,7 @@ ble.config(
 ```
 
 ### How the Example Script Combines Both Options
-The example script at `examples/Data_forwarder_and_ingestion/ble_receiver.py` uses `os.getenv("VAR", "default")` which gives you both options at once:
+The example script at `raspberry/forwarder_and_ingestion_scripts/ble_receiver.py` uses `os.getenv("VAR", "default")` which gives you both options at once:
 ```python
 # If the environment variable is already set on your system, it uses that value.
 # If not, it falls back to the value you type between the quotes.
@@ -126,11 +126,11 @@ If you retrain or change your model with new keywords, simply update your labels
 
 ## 4. Using BLEReceiver
 
-Once `ble.config()` is called, the `BLEReceiver` class handles all Bluetooth communication automatically. The example script at `examples/Data_forwarder_and_ingestion/ble_receiver.py` shows the full recommended usage:
+Once `ble.config()` is called, the `BLEReceiver` class handles all Bluetooth communication automatically. The example script at `raspberry/forwarder_and_ingestion_scripts/ble_receiver.py` shows the full recommended usage:
 
 ```python
 import asyncio
-from silabs_mlops import ble
+from sml.ops import ble
 
 async def main():
     ble.config(
