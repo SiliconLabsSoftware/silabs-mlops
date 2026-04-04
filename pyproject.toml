@@ -3,7 +3,7 @@ name = "sml-ops"
 version = "0.1.0"
 description = "Silicon Labs MLOps SDK for edge devices and Databricks."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
   "bleak",
   "click>=8.3.1",
