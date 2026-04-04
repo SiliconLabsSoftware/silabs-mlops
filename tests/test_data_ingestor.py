@@ -1,180 +1,203 @@
 import json
-from pathlib import Path
-import pytest
-from unittest.mock import MagicMock, patch
-
-
-from sml.ops.data.ingest.config import IngestConfig
+import unittest
+from unittest.mock import patch, MagicMock, mock_open
 from sml.ops.data.ingest.ingestor import DataIngestor
+from sml.ops.data.ingest.config import IngestConfig
 
 
-@pytest.fixture
-def config():
-    """Default valid configuration."""
-    return IngestConfig(
-        server_endpoint="server.com",
-        workspace_url="workspace.com",
-        table_name="cat.db.tab",
-        client_id="id",
-        client_secret="secret"
-    )
+class TestDataIngestor(unittest.TestCase):
 
+    def setUp(self):
+        #  Build a realistic mock config using real IngestConfig
+        self.mock_config = MagicMock(spec=IngestConfig)
+        self.mock_config.server_endpoint = "ep"
+        self.mock_config.workspace_url = "https://wsp.url"
+        self.mock_config.table_name = "tab"
+        self.mock_config.client_id = "id"
+        self.mock_config.client_secret = "secret"
+        self.mock_config.buffer_path = "buf.json"
 
-def test_ingestor_initialization(config):
-    """Verify ingestor correctly creates the underlying client."""
-    ing = DataIngestor(config)
-    assert ing.config == config
-    # Assumes the ingestor exposes the client and mirrors server_endpoint
-    assert ing.client.server_endpoint == "server.com"
+        #  Patch only inside the ingestor module 
+        with patch("sml.ops.data.ingest.ingestor.ZerobusIngestClient"), \
+             patch("sml.ops.data.ingest.ingestor.Logger"):
+            self.ingestor = DataIngestor(self.mock_config)
 
+    # ---------------------------------------------------------------------
+    #  _read_buffered_records Tests
+    # ---------------------------------------------------------------------
 
-def test_read_buffered_json_array(tmp_path: Path, config):
-    """Test reading a standard JSON array file."""
-    buf = tmp_path / "buffer.json"
-    buf.write_text(json.dumps([{"temp": 20}, {"temp": 25}]), encoding="utf-8")
+    def test_read_buffer_none(self):
+        """No buffer path → return empty list."""
+        self.mock_config.buffer_path = None
+        result = self.ingestor._read_buffered_records()
+        self.assertEqual(result, [])
 
-    config.buffer_path = str(buf)
-    ing = DataIngestor(config)
+    @patch("sml.ops.data.ingest.ingestor.Path.exists")
+    @patch("builtins.print")
+    def test_read_buffer_missing_file(self, mock_print, mock_exists):
+        mock_exists.return_value = False
+        result = self.ingestor._read_buffered_records("missing.json")
+        self.assertEqual(result, [])
+        mock_print.assert_called_with("Warning: Buffer file not found at missing.json")
 
-    records = ing._read_buffered_records()
-    assert records == [{"temp": 20}, {"temp": 25}]
+    @patch("sml.ops.data.ingest.ingestor.Path.exists")
+    def test_read_buffer_json_array(self, mock_exists):
+        mock_exists.return_value = True
+        data = [{"a": 1}]
+        with patch("builtins.open", mock_open(read_data=json.dumps(data))):
+            result = self.ingestor._read_buffered_records()
+            self.assertEqual(result, data)
 
+    @patch("sml.ops.data.ingest.ingestor.Path.exists")
+    def test_read_buffer_json_object(self, mock_exists):
+        mock_exists.return_value = True
+        data = {"a": 1}
+        with patch("builtins.open", mock_open(read_data=json.dumps(data))):
+            result = self.ingestor._read_buffered_records()
+            self.assertEqual(result, [data])
 
-def test_read_buffered_json_lines(tmp_path: Path, config):
-    """Test reading JSON lines (IoT style) format."""
-    buf = tmp_path / "stream.jsonl"
-    buf.write_text('{"sensor": "A", "val": 10}\n{"sensor": "B", "val": 20}\n', encoding="utf-8")
+    @patch("sml.ops.data.ingest.ingestor.Path.exists")
+    @patch("builtins.print")
+    def test_read_buffer_json_lines(self, mock_print, mock_exists):
+        mock_exists.return_value = True
+        content = '{"a":1}\n{"b":2}\ninvalid\n{"c":3}'
+        with patch("builtins.open", mock_open(read_data=content)):
+            result = self.ingestor._read_buffered_records()
+            self.assertEqual(result, [{"a":1},{"b":2},{"c":3}])
+            mock_print.assert_called()
 
-    config.buffer_path = str(buf)
-    ing = DataIngestor(config)
+    # ---------------------------------------------------------------------
+    #  ingest() Tests
+    # ---------------------------------------------------------------------
 
-    records = ing._read_buffered_records()
-    assert records == [{"sensor": "A", "val": 10}, {"sensor": "B", "val": 20}]
+    def test_ingest_no_records(self):
+        with patch.object(self.ingestor, "_read_buffered_records", return_value=[]), \
+             patch("builtins.print") as mock_print:
+            result = self.ingestor.ingest()
+            self.assertFalse(result)
+            mock_print.assert_called_with("No records to ingest.")
 
-
-def test_read_buffered_file_not_found(config):
-    """Verify it returns empty list silently if file is missing."""
-    config.buffer_path = "/tmp/does_not_exist.json"
-    ing = DataIngestor(config)
-    assert ing._read_buffered_records() == []
-
-
-import sys
-
-def test_ingest_no_records_outputs_and_aborts(config, capsys, monkeypatch):
-    """If there's no data, it shouldn't connect and should print a message."""
-    # Obtain the module directly from sys.modules to avoid shadowing by data.ingest()
-    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
-
-    class DummyClient:
-        def __init__(self, *args, **kwargs):
-            pass
-        def connect(self):
-            raise AssertionError("should not connect")
-        def close(self):
-            pass
-
-    # Replace the real client with a dummy
-    monkeypatch.setattr(ingestor_mod, "ZerobusIngestClient", DummyClient)
-
-    ing = DataIngestor(config)
-    assert ing.ingest(data=[]) is False
-
-    out = capsys.readouterr().out
-    # Adapt this if you log instead of print
-    assert "No records to ingest." in out
-
-
-def test_ingest_happy_path_calls_once(config):
-    """Test ingesting an explicitly passed python list."""
-    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
-    
-    with patch.object(ingestor_mod, "ZerobusIngestClient") as mock_client_class:
-        mock_client = MagicMock()
-        mock_client_class.return_value = mock_client
-
-        ing = DataIngestor(config)
+    def test_ingest_success_buffer(self):
         records = [{"a": 1}]
+        with patch.object(self.ingestor, "_read_buffered_records", return_value=records):
+            self.assertTrue(self.ingestor.ingest())
+            self.ingestor.client.connect.assert_called_once()
+            self.ingestor.client.ingest_batch.assert_called_with(records)
+            self.ingestor.client.close.assert_called_once()
 
-        result = ing.ingest(data=records)
+    def test_ingest_success_direct(self):
+        records = [{"a": 1}]
+        self.assertTrue(self.ingestor.ingest(data=records))
+        self.ingestor.client.ingest_batch.assert_called_with(records)
 
-        assert result is True
-        mock_client.connect.assert_called_once()
-        mock_client.ingest_batch.assert_called_once_with(records)
-        mock_client.close.assert_called_once()
+    @patch("builtins.print")
+    def test_ingest_auth_failure(self, mock_print):
+        self.ingestor.client.connect.side_effect = Exception("401 Unauthorized")
+        self.assertFalse(self.ingestor.ingest(data=[{"a":1}]))
+        mock_print.assert_any_call("\n[AUTH FAILURE] 401 Unauthorized -- check your service principal permissions.")
+
+    @patch("builtins.print")
+    def test_ingest_schema_mismatch(self, mock_print):
+        self.ingestor.client.connect.side_effect = Exception("Error 4044: decoder failure")
+        self.assertFalse(self.ingestor.ingest(data=[{"a":1}]))
+        mock_print.assert_any_call("\n[SCHEMA MISMATCH ERROR] The server rejected the record format (Code 4044).")
+
+    @patch("traceback.print_exc")
+    @patch("builtins.print")
+    def test_ingest_general_error(self, mock_print, mock_trace):
+        self.ingestor.client.connect.side_effect = Exception("Unknown Error")
+        self.assertFalse(self.ingestor.ingest(data=[{"a":1}]))
+        mock_print.assert_any_call("Error during ingestion: Exception: Unknown Error")
+
+    @patch("builtins.print")
+    def test_ingest_close_failure(self, mock_print):
+        self.ingestor.client.close.side_effect = Exception("Close Error")
+        self.assertTrue(self.ingestor.ingest(data=[{"a":1}]))
+        mock_print.assert_any_call("[DEBUG] Could not cleanly close stream: Close Error")
+
+    # ---------------------------------------------------------------------
+    #  OAuth Token Tests
+    # ---------------------------------------------------------------------
+
+    @patch("requests.post")
+    def test_token_success(self, mock_post):
+        mock_post.return_value.json.return_value = {"access_token":"tkn"}
+        self.assertEqual(self.ingestor._get_oauth_token(), "tkn")
+
+    def test_token_missing_creds(self):
+        self.mock_config.client_id = None
+        self.assertIsNone(self.ingestor._get_oauth_token())
+
+    @patch("requests.post")
+    def test_token_failure(self, mock_post):
+        mock_post.side_effect = Exception("Network Error")
+        self.assertIsNone(self.ingestor._get_oauth_token())
+
+    # ---------------------------------------------------------------------
+    #  Upload to Volume Tests
+    # ---------------------------------------------------------------------
+
+    @patch("requests.put")
+    def test_upload_success(self, mock_put):
+        mock_put.return_value.status_code = 200
+        res = self.ingestor._upload_to_volume("t", b"x", "/Volumes/main/data/file.txt")
+        self.assertTrue(res)
+
+    @patch("requests.put")
+    def test_upload_normalizes_dbfs(self, mock_put):
+        mock_put.return_value.status_code = 200
+        self.ingestor._upload_to_volume("t", b"x", "dbfs:/vol\\file.txt")
+        args, _ = mock_put.call_args
+        assert "/Volumes/vol/file.txt" in args[0]
+
+    @patch("requests.put")
+    def test_upload_failure(self, mock_put):
+        mock_put.return_value.status_code = 500
+        mock_put.return_value.text = "Err"
+        res = self.ingestor._upload_to_volume("t", b"x", "/Volumes/x")
+        self.assertFalse(res)
+
+    @patch("requests.put")
+    def test_upload_exception(self, mock_put):
+        mock_put.side_effect = Exception("Crash")
+        self.assertFalse(self.ingestor._upload_to_volume("t", b"x", "/Volumes/x"))
+
+    # ---------------------------------------------------------------------
+    #  file_ingest() Tests
+    # ---------------------------------------------------------------------
+
+    @patch("sml.ops.data.ingest.ingestor.time.time")
+    def test_file_ingest_success(self, mock_time):
+        mock_time.return_value = 12345.0
+
+        with patch("builtins.open", mock_open(read_data=b"content")), \
+             patch.object(self.ingestor, "_get_oauth_token", return_value="tok"), \
+             patch.object(self.ingestor, "_upload_to_volume", return_value=True), \
+             patch.object(self.ingestor, "ingest", return_value=True) as mock_ing:
+
+            metadata = {"file_name": "data.csv"}
+            result = self.ingestor.file_ingest("loc.csv", "/Volumes/x", metadata)
+
+            self.assertTrue(result)
+            self.assertEqual(metadata["file_path"], "/Volumes/x")
+            self.assertEqual(metadata["ingest_ts"], 12345000)
+            mock_ing.assert_called_once()
+
+    @patch("builtins.open", side_effect=Exception("Read Error"))
+    def test_file_ingest_read_failure(self, _):
+        self.assertFalse(self.ingestor.file_ingest("missing.csv", "/v", {}))
+
+    def test_file_ingest_token_failure(self):
+        with patch("builtins.open", mock_open(read_data=b"x")), \
+             patch.object(self.ingestor, "_get_oauth_token", return_value=None):
+            self.assertFalse(self.ingestor.file_ingest("x", "/v", {}))
+
+    def test_file_ingest_upload_failure(self):
+        with patch("builtins.open", mock_open(read_data=b"x")), \
+             patch.object(self.ingestor, "_get_oauth_token", return_value="tok"), \
+             patch.object(self.ingestor, "_upload_to_volume", return_value=False):
+            self.assertFalse(self.ingestor.file_ingest("x", "/v", {}))
 
 
-def test_ingest_auth_failure_cleanup(config):
-    """Test capturing a 401 Unauthorized exception and ensuring cleanup."""
-    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
-    
-    with patch.object(ingestor_mod, "ZerobusIngestClient") as mock_client_class:
-        mock_client = MagicMock()
-        mock_client_class.return_value = mock_client
-        mock_client.connect.side_effect = Exception("401 Unauthorized: Invalid secret")
-
-        ing = DataIngestor(config)
-        result = ing.ingest(data=[{"x": 1}])
-
-        assert result is False
-        mock_client.close.assert_called_once()  # Should always attempt to close
-
-
-def test_ingest_schema_mismatch_failure(config):
-    """Test capturing a schema/decoder error during batch ingest."""
-    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
-    
-    with patch.object(ingestor_mod, "ZerobusIngestClient") as mock_client_class:
-        mock_client = MagicMock()
-        mock_client_class.return_value = mock_client
-        mock_client.ingest_batch.side_effect = Exception("Code 4044: Decoder issue")
-
-        ing = DataIngestor(config)
-        result = ing.ingest(data=[{"x": 1}])
-
-        assert result is False
-        mock_client.connect.assert_called_once()
-        mock_client.close.assert_called_once()
-
-
-def test_ingest_from_buffer(tmp_path: Path, config):
-    """Test ingesting from a buffer file when data is not explicitly provided."""
-    buf = tmp_path / "data.json"
-    buf.write_text(json.dumps([{"val": 100}]), encoding="utf-8")
-    config.buffer_path = str(buf)
-
-    ingestor_mod = sys.modules["sml.ops.data.ingest.ingestor"]
-    with patch.object(ingestor_mod, "ZerobusIngestClient") as mock_client_class:
-        mock_client = MagicMock()
-        mock_client_class.return_value = mock_client
-        ing = DataIngestor(config)
-
-        result = ing.ingest()  # No data arg
-
-        assert result is True
-        mock_client.ingest_batch.assert_called_once_with([{"val": 100}])
-
-
-def test_read_buffered_malformed_json(tmp_path: Path, config):
-    """Test that malformed JSON lines are skipped with a warning."""
-    buf = tmp_path / "malformed.jsonl"
-    # One good line, one bad line
-    buf.write_text('{"a": 1}\n{not_json}\n{"b": 2}', encoding="utf-8")
-    config.buffer_path = str(buf)
-    
-    ing = DataIngestor(config)
-    records = ing._read_buffered_records()
-    
-    assert records == [{"a": 1}, {"b": 2}]
-
-
-def test_read_buffered_empty_file(tmp_path: Path, config):
-    """Test reading an empty file."""
-    buf = tmp_path / "empty.json"
-    buf.write_text("", encoding="utf-8")
-    config.buffer_path = str(buf)
-    
-    ing = DataIngestor(config)
-    records = ing._read_buffered_records()
-    
-    assert records == []
+if __name__ == "__main__":
+    unittest.main()
