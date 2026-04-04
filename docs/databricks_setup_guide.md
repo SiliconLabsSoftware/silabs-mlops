@@ -54,11 +54,7 @@ You must generate:
 2. Click **Generate New Secret**  
 3. Copy the **Client ID** and **Client Secret**  
 
-1. Inside the service principal, open **Secrets**
-2. Click **Generate New Secret**
-3. Copy the **Client ID** and **Client Secret**
-
-_Note: The Client ID and Client Secret are required for authentication. Copy the client secret immediately as it will not be visible again._
+*Note: The Client ID and Client Secret are required for authentication. Copy the client secret immediately as it will not be visible again.*
 
 ![alt text](images/secrets_generate.png)
 
@@ -100,6 +96,7 @@ Your workspace must be zerobus enabled and in a region supported by ZeroBus, and
 ## 2. Assign Required Permissions
 
 ### 2.1 Workspace Permissions
+1. Before proceeding, ensure that your Databricks account (or the group your account belongs to) has the required workspace entitlements enabled — specifically:
 
 > [!NOTE]
 > If you are a Databricks admin, you can manage these yourself. If you are not an administrator, you must contact your Databricks admin to enable "Workspace access" and "Databricks SQL access" for your user account or group.
@@ -221,10 +218,10 @@ GRANT READ, WRITE ON VOLUME <catalog>.<schema>.<volume> TO `<service-principal>`
 
 ### 3.1 Create a Catalog
 
-_Note: Make sure your account has permission to create a catalog. If not, ask your admin to grant you permission._
+*Note: Make sure your account has permission to create a catalog. If not, ask your admin to grant you permission.*
 
-1. Go to **Catalog Explorer**
-2. Click **Create** button on the top right corner and select **Create Catalog**
+1. Go to **Catalog Explorer**  
+2. Click **Create** button on the top right corner and select **Create Catalog**  
 3. Example: `mlops_catalog`
 
 ![alt text](images/create_catalog.png)
@@ -259,11 +256,12 @@ Once you run the script & created the table, you can find the table in the Catal
 
 ![alt text](images/create_table.png)
 
-### 3.4 Create a Volume
 
-1. Go to **Catalog Explorer**
-2. Click **Create** button on the top right corner and select **Create Volume** and select the Catalog and Schema where you want to create the volume.
-   Or else you can run this script in the SQL Editor
+### 3.4 Create a Volume 
+
+1. Go to **Catalog Explorer**  
+2. Click **Create** button on the top right corner and select **Create Volume**  and select the Catalog and Schema where you want to create the volume. 
+Or else you can run this script in the SQL Editor
 
 ```sql
 CREATE VOLUME mlops_catalog.default.artifacts;
@@ -271,16 +269,16 @@ CREATE VOLUME mlops_catalog.default.artifacts;
 
 ![alt text](images/create_volume.png)
 
+
 ### How to View Your Created Objects
 
 Once you have created your Catalog, Schema, or Table, you can always find them here:
-
-1. On the left-hand sidebar of Databricks, click on **Catalog** (the cylinder icon).
-2. Use the **Catalog Explorer** to browse your hierarchy:
-    - **Catalogs**: Listed in the main pane.
-    - **Schemas**: Found inside a selected Catalog.
-    - **Tables**: Found inside a selected Schema under the "Tables" tab.
-    - **Volumes**: Found inside a selected Schema under the "Volumes" tab.
+1.  On the left-hand sidebar of Databricks, click on **Catalog** (the cylinder icon).
+2.  Use the **Catalog Explorer** to browse your hierarchy:
+    *   **Catalogs**: Listed in the main pane.
+    *   **Schemas**: Found inside a selected Catalog.
+    *   **Tables**: Found inside a selected Schema under the "Tables" tab.
+    *   **Volumes**: Found inside a selected Schema under the "Volumes" tab.
 
 Once created, ensure you provide your Service Principal with the necessary **GRANTs** (USE CATALOG, USE SCHEMA, SELECT, MODIFY) as described in the Permissions section.
 

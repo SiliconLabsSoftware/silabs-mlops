@@ -20,6 +20,8 @@ To use these files in a cloud environment (e.g., Databricks):
 
 2.  **Unity Catalog Volumes**: Ensure your training data is uploaded to a Unity Catalog Volume.
 
+3.  **Environment Sync**: Run `dbutils.library.restartPython()` in the notebook to ensure all libraries are correctly loaded.
+
 ---
 
 ## 3. Configuration
@@ -30,60 +32,85 @@ Modify the global path variables at the top of the script:
 
 1.  **`WORKSPACE_MODELS_DIR`** (Line 35): The base directory for all training outputs.
     ```python
-    WORKSPACE_MODELS_DIR = "<YOUR_WORKSPACE_DIR/models>"
+    WORKSPACE_MODELS_DIR = "<YOUR_WORKSPACE_DIR>/models"
     ```
-2.  **`Teacher_H5`** (Line 37): The specific path for the teacher model artifact. This is derived from the workspace directory by default.
+2.  **`Teacher_H5`** (Line 37): The specific path for the teacher model artifact. 
     ```python
     Teacher_H5 = f"{WORKSPACE_MODELS_DIR}/custom_model_teacher.h5"
     ```
 3.  **`DataRoot`** (Line 40): The absolute path to your dataset in Unity Catalog Volumes.
     ```python
- # Example Unity Catalog Volume path:
-    DataRoot = "/Volumes/catalog_name/schema_name/volume_name/dataset_folder"    
+    DataRoot = "<PATH_TO_VOLUMES_DATASET>"
     ```
 
 ### Edit `run_custom_model.ipynb`
 Modify:
 
-1.  **`sys.path`** (Cell 2): Point to the Workspace directory containing `custom_model.py`.
+1.  **`sys.path`** (Cell 2): Point to the directory containing `custom_model.py`.
+    ```python
+    sys.path.append("<PATH_TO_DIRECTORY>")
+    ```
 2.  **`dst_dir`** (Cell 13): The destination for exported model artifacts.
-Eg: dst_dir = "<Path_to_workspace_files/models>"
-
+    ```python
+    dst_dir = "<PATH_TO_WORKSPACE_FILES>/models"
+    ```
 
 ---
 
-## 4. Training Parameters
+## 4. Preprocessing
+In the provided pipeline, we have used **Vosk** (Cell 7) as a refinement step to remove false positives. However, you can replace this with any other preprocessing technique or skip this cell based on your specific requirements:
+
+*   **MODEL_PATH**: Path to your refinement model.
+
+    ```python
+    MODEL_PATH = "<PATH_TO_ML_LAYER_MODEL>"
+    ```
+
+*   **AUDIO_PATH**: Path to your raw audio volume.
+
+    ```python
+    AUDIO_PATH = "<PATH_TO_VOLUMES_DATASET>"
+    ```
+
+*   **auto_rename**: Set to `True` to automatically update files and metadata in Unity Catalog.
+
+---
+
+## 5. Training Parameters
 You can fine-tune the training behavior in `custom_model.py`:
 
-*   **Epochs**: Default is set to `2` for testing. Increase `my_model.epochs` in `custom_model.py` for full training.
-*   **Batch Size**: `my_model.batch_size` (default `32`).
-*   **Dataset Split**: Adjust `test_fraction` inside `MyDataset.load_dataset` (Line 423).
-    *   Example: `test_fraction = 0.2` for a 20% validation split.
+*   **Epochs**: Default is set to `2`. Increase `my_model.epochs` (Line 62).
+*   **Batch Size**: `my_model.batch_size` (Line 63).
+*   **Dataset Split**: Adjust `test_fraction` inside `MyDataset.load_dataset` (Line 420).
+    *   Example: `test_fraction = 0.20` for a fixed 20% validation split.
 
 ---
 
-## 5. Training Workflow
-The workflow has two phases. **Run all notebook cells in order** so the teacher model, student model, and exported artifacts are generated correctly.
+## 6. Training Workflow
+The workflow has two phases. **Run all notebook cells in order**.
 
-### Phase 1: Train Teacher Model
+### Phase 1: Train Teacher Model (Cell 8)
 - Sets `os.environ["TRAIN_TEACHER"] = "1"`.
-- If a **previous version of the teacher model** exists (a base model), training will **resume / fine‑tune from that version**.
-- If no previous version exists, the teacher model is **trained from scratch**.
-- Output: `custom_model_teacher.h5`.
+- If a **previous version** (`custom_model_teacher.h5`) exists, training **resumes** (`clean=False`).
+- Otherwise, it **starts from scratch** (`clean=True`).
+- Accuracy is stored in `/tmp/teacher_accuracy.txt`.
 
-### Phase 2: Train Student Model (Knowledge Distillation)
+### Phase 2: Train Student Model (Cell 11)
 - Sets `os.environ["TRAIN_TEACHER"] = "0"`.
-- If a **previous version of the student model** exists, it will **resume / fine‑tune from that version**.
-- If no previous student checkpoint exists, the student is **trained from scratch**.
-- The student always learns from the **latest fine‑tuned teacher model**.
+- Uses the latest **teacher model** for knowledge distillation.
+- Resumes training if a student model exists.
+- Accuracy is stored in `/tmp/student_accuracy.txt`.
 
 ---
 
-## 6. Final Artifacts
-After training, run the final cell to copy:
-- `custom_model.h5`: The student model.
-- `custom_model.tflite`: The quantized model for deployment.
-- `custom_model.tflite.summary.txt`: Profiling summary.
+## 7. Final Artifacts
+After training, run the final cell (Cell 13) to locate and copy artifacts:
+
+*   `custom_model.h5`: The trained student model.
+
+*   `custom_model.tflite`: The quantized model for deployment.
+
+*   `custom_model.tflite.summary.txt`: Model profiling summary.
 
 ---
 

@@ -416,49 +416,52 @@ class MyDataset(mltk_core.MltkDataset):
     def load_dataset(self, subset, **kwargs):
         df = GLOBAL_DF.copy()
 
-        # Safe validation fraction: must have >= 1 sample per class in validation
-        n_classes = NUM_CLASSES
-        n_total = len(df)
-        min_val_frac = n_classes / n_total if n_total else 0.5
-        test_fraction = max(0.50, min_val_frac)  # adjust 0.50 to 0.20 if you prefer a 20% validation split
-
+        # ✅ Always use fixed 80% train / 20% validation split
+        test_fraction = 0.20   # 20% validation
 
         df_train, df_val = train_test_split(
             df,
             test_size=test_fraction,
             random_state=42,
-            stratify=df["class_label"]
+            stratify=df["class_label"]   # ensures stratified split
         )
 
+        # ✅ Select correct subset
         used = df_train if subset == "training" else df_val
+
+        # Extract features and labels
         x_paths = used["file_path"].tolist()
         y_labels = used["class_label"].tolist()
 
+        # Convert labels → ids → one-hot vectors
         label_to_id = {c: i for i, c in enumerate(my_model.classes)}
         y_ids = [label_to_id[y] for y in y_labels]
         y_onehot = tf.keras.utils.to_categorical(y_ids, num_classes=NUM_CLASSES)
 
+        # Build TF datasets
         x_ds = tf.data.Dataset.from_tensor_slices(x_paths)
         y_ds = tf.data.Dataset.from_tensor_slices(y_onehot)
 
-        # Non-deprecated counter
+        # Random seed counter (TF2 compatible)
         seed_counter = tf.data.Dataset.counter()
         x_ds = x_ds.zip((x_ds, y_ds, seed_counter)).batch(my_model.batch_size)
 
-        # Start with single worker to avoid multiprocessing import issues
+        # Preprocessing / augmentation
         x_ds, pool = tf_dataset_utils.parallel_process(
             x_ds,
             audio_augmentation_pipeline,
             dtype=np.int8,
-            n_jobs=0,
+            n_jobs=0,        # single worker to avoid multiprocessing issues
             name=subset
         )
         self.pools.append(pool)
 
+        # Final dataset
         ds = tf.data.Dataset.zip((x_ds.unbatch(), y_ds))
         ds = ds.batch(my_model.batch_size).prefetch(2)
-        return ds
 
+        return ds
+        
 my_model.dataset = MyDataset()
 
 # Audio classifier metadata (included in .tflite metadata)
