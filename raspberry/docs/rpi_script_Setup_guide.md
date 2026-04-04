@@ -9,7 +9,7 @@ This guide provides simple instructions for running the data ingestion system on
 ### Dependencies to be Installed
 
 - **The Silicon Labs MLOps SDK**: `pip install silabs-mlops`
-  - _Install this SDK to access the `sml.ops.ble` and `sml.ops.data` libraries used by the gateway scripts. It automatically installs all required dependencies including `bleak`, `numpy`, and `requests`._
+  - *Install this SDK to access the `sml.ops.ble` and `sml.ops.data` libraries used by the gateway scripts. It automatically installs all required dependencies including `bleak`, `numpy`, and `requests`.*
 - **Commander-cli_linux_aarch64**:
   - _Install this commander-cli (Linux version-ARM64) from Silicon labs or [click here](https://www.silabs.com/software-and-tools/simplicity-studio/simplicity-commander?tab=getting-started) to download it and export the commander-cli path_
 
@@ -95,7 +95,7 @@ os.environ["DATABRICKS_VOLUME_PATH"] = "/Volumes/<catalog>/<schema>/<volume>"
 os.environ["AUDIO_SAMPLES_DIR"] = "/path/to/your/audio_samples"
 ```
 
-> For details on obtaining these databricks credentials, refer to the [Databricks Setup Guide](databricks_setup_guide.md).
+> For details on obtaining these databricks credentials, refer to the [Databricks Setup Guide](../../docs/databricks_setup_guide.md).
 
 ### 🔹 Choose Your Ingestion Engine
 
@@ -165,7 +165,7 @@ Finally, open your `ingestion_service.py` and tell it to launch the parallel ing
 
 ## 3. Overview
 
-There are four Python scripts provided in the examples folder, but you will only run **three** of them as your core gateway system:
+There are four Python scripts provided in the raspberry folder, but you will only run **three** of them as your core gateway system:
 
 1. **`ble_receiver.py`** (Required)
 2. **`ingestion_service.py`** (Required)
