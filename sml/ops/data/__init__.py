@@ -25,13 +25,13 @@ from typing import List, Dict, Any, Optional
 from .ingest import IngestConfig, DataIngestor, ZerobusIngestClient
 from sml.ops.config import Config
 
-# Module-level configuration storage
 _config: Optional[IngestConfig] = None
 
 __all__ = [
     "config",
     "ingest",
     "ingest_from_file",
+    "file_ingest",
 ]
 
 
@@ -76,7 +76,6 @@ def config(
         client_secret=client_secret,
     )
 
-    # Sync with central Config for other modules (Profiler, Logger)
     Config.update(
         ZEROBUS_SERVER_ENDPOINT=server_endpoint,
         ZEROBUS_WORKSPACE_URL=workspace_url,
@@ -153,3 +152,32 @@ def ingest_from_file(file_path: str) -> bool:
 
     ingestor = DataIngestor(_config)
     return ingestor.ingest(buffer_path=file_path)
+
+
+def file_ingest(file_path: str, volume_path: str, metadata: Dict[str, Any]) -> bool:
+    """
+    Comprehensive file ingestion: Upload file to Volume and ingest metadata.
+
+    You must call data.config() first to set up your credentials.
+
+    Args:
+        file_path: Local path to the file
+        volume_path: Destination path in Databricks Unity Catalog Volume
+        metadata: Dictionary of metadata to ingest via ZeroBus
+
+    Returns:
+        True if both upload and ingestion succeeded, False otherwise
+
+    Example:
+        >>> from sml.ops import data
+        >>>
+        >>> data.config(...)
+        >>> metadata = {"device_id": "rpi-1", "file_name": "data.csv"}
+        >>> data.file_ingest("data.csv", "/Volumes/main/default/data/data.csv", metadata)
+    """
+    if _config is None:
+        print("Error: Configuration not set. Call data.config() first.")
+        return False
+
+    ingestor = DataIngestor(_config)
+    return ingestor.file_ingest(file_path, volume_path, metadata)
