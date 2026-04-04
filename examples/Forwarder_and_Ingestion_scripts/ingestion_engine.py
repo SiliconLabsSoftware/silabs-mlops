@@ -54,7 +54,8 @@ MONITOR_DIR = r"<PATH_TO_MONITOR_DIR>" # Should match Ble_receiver's OUTPUT_DIR
 
 # SDK imports
 try:
-    from silabs_mlops import data as zerobus_data
+    from sml.ops import data as zerobus_data
+
     ZEROBUS_AVAILABLE = True
 except Exception:
     ZEROBUS_AVAILABLE = False
