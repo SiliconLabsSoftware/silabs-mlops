@@ -180,7 +180,7 @@ class TestDataIngestor(unittest.TestCase):
 
             self.assertTrue(result)
             self.assertEqual(metadata["file_path"], "/Volumes/x")
-            self.assertEqual(metadata["ingest_ts"], 12345000)
+            self.assertEqual(metadata["ingest_ts"], 12_345_000_000)
             mock_ing.assert_called_once()
 
     @patch("builtins.open", side_effect=Exception("Read Error"))
