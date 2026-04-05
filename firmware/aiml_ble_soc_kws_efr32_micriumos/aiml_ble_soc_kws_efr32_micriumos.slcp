@@ -1,12 +1,11 @@
-project_name: aiml_soc_voice_ble_efr32_micriumos
+project_name: aiml_ble_soc_kws_efr32_micriumos
 package: aiml_app
 quality: production
-label: AI/ML - SoC Audio Classifier + Voice over BLE (Micrium OS) for EFR32
+label: AI/ML - SoC Keyword Spotting with transmission over BLE
 description: >
   TensorFlow Lite classifies microphone audio in a Micrium OS task; keyword
   results and optional PCM bursts are sent over GATT notifications. Health
-  Thermometer profile is included for the on-board RHT sensor. Same extension-based
-  layout as aiml_soc_audio_classifier_efr32_micriumos (no package manager).
+  Thermometer profile is included for the on-board RHT sensor.
 category: AI/ML Application
 filter:
 - name: Device Type
@@ -72,12 +71,6 @@ component:
   instance:
   - btn0
 - id: mpu
-- id: tensorflow_lite_micro_accelerated_kernels
-  condition: [device_has_mvp]
-- id: tensorflow_lite_micro_optimized_kernels
-  condition: [device_has_mvp]
-- id: tensorflow_lite_micro_optimized_kernels
-  condition: [device_compute_basic]
 config_file:
 - path: config/btconf/gatt_configuration.btconf
   directory: btconf
@@ -85,14 +78,9 @@ config_file:
     component: gatt_configuration
     file_id: gatt_configuration_file_id
 - path: config/audio_classifier_config.h
-- path: tflite_models/tflite/keyword_spotting_on_off.tflite
-  file_id: flatbuffer_file_id
-  directory: tflite
-  unless: [tensorflow_lite_micro_accelerated_kernels]
 - path: tflite_models/tflite/keyword_spotting_on_off_v2.tflite
   file_id: flatbuffer_file_id
   directory: tflite
-  condition: [tensorflow_lite_micro_accelerated_kernels]
 define:
 - name: DEBUG_EFM
 - name: TF_LITE_STATIC_MEMORY
@@ -193,11 +181,3 @@ tag:
 - hardware:component:microphone
 - hardware:device:ram:128
 - hardware:device:flash:130
-sdk_extension:
-- id: aiml
-  vendor: silabs
-  version: 2.2.0
-sdk:
-  id: simplicity_sdk
-  vendor: silabs
-  version: 2025.12.0
