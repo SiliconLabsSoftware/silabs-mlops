@@ -88,6 +88,7 @@ The Silicon Labs MLOps SDK is a professional toolset designed to seamlessly brid
   BLE_DEVICE_ADDRESS="xx:xx:xx:xx:xx:xx"
   BLE_RESULT_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
   BLE_DATA_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  BLE_LABELS="<keyword1>,<keyword2>,unknown"
   AUDIO_SAMPLES_DIR="/path/to/your/audio_samples"
   ```
 
