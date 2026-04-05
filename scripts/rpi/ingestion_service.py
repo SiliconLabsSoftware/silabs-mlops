@@ -4,19 +4,22 @@ import os
 # Databricks / ZeroBus Credentials
 # ========================
 # Update these with your own Databricks/ZeroBus credentials
-os.environ["ZEROBUS_WORKSPACE_URL"] = "https://<your-workspace-url>.azuredatabricks.net"
-os.environ["ZEROBUS_CLIENT_ID"] = "<your-service-principal-client-id>"
-os.environ["ZEROBUS_CLIENT_SECRET"] = "<your-service-principal-client-secret>"
 
-# ZeroBus Endpoint and Table
-os.environ["ZEROBUS_SERVER_ENDPOINT"] = "<your-workspace-id>.zerobus.<region>.azuredatabricks.net"
-os.environ["ZEROBUS_TABLE_NAME"] = "<catalog>.<schema>.<table_name>"
+# ZeroBus Ingestion Configuration
+DATABRICKS_VOLUME_PATH = "/Volumes/mlops_dev/default/audio_raw"
+ZEROBUS_SERVER_ENDPOINT = "7405615984054316.zerobus.southcentralus.azuredatabricks.net"
+ZEROBUS_WORKSPACE_URL = "https://adb-7405615984054316.16.azuredatabricks.net"
+ZEROBUS_TABLE_NAME = "mlops_dev.default.stream_audio_metadata"
+ZEROBUS_CLIENT_ID = "2cf06ebd-b4ad-40f8-91be-74e576e147f5"
+ZEROBUS_CLIENT_SECRET = "dose3ecfb65d12bdc5a1a8d228e140e34883"
 
-# Databricks Volume Path (Example: "/Volumes/main/default/audio_data")
-os.environ["DATABRICKS_VOLUME_PATH"] = "/Volumes/<catalog>/<schema>/<volume>"
 
-# Local directory to monitor (Must match ble_receiver.py)
-os.environ["AUDIO_SAMPLES_DIR"] = "/path/to/your/audio_samples"
+os.environ["DATABRICKS_VOLUME_PATH"] = DATABRICKS_VOLUME_PATH
+os.environ["ZEROBUS_SERVER_ENDPOINT"] = ZEROBUS_SERVER_ENDPOINT
+os.environ["ZEROBUS_WORKSPACE_URL"] = ZEROBUS_WORKSPACE_URL
+os.environ["ZEROBUS_TABLE_NAME"] = ZEROBUS_TABLE_NAME
+os.environ["ZEROBUS_CLIENT_ID"] = ZEROBUS_CLIENT_ID
+os.environ["ZEROBUS_CLIENT_SECRET"] = ZEROBUS_CLIENT_SECRET
 
 # ========================
 # Run the Ingestor
@@ -30,3 +33,4 @@ import sequential_ingestion_engine
 
 if __name__ == "__main__":
     sequential_ingestion_engine.main()
+

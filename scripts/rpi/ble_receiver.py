@@ -39,11 +39,11 @@ async def main():
         sample_rate=SAMPLE_RATE,
         channels=CHANNELS,
         sample_width=SAMPLE_WIDTH,
-        labels=LABELS
+        labels=LABELS,
     )
 
     receiver = ble.BLEReceiver()
-    
+
     try:
         await receiver.start()
     except Exception as e:
@@ -54,3 +54,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\nStopping...")
+
