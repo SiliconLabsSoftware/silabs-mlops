@@ -8,16 +8,21 @@ description: >
   Thermometer profile is included for the on-board RHT sensor.
 category: AI/ML Application
 filter:
-- name: Device Type
-  value: [SoC]
-- name: MCU
-  value: [32-bit MCU]
-- name: Project Difficulty
-  value: [Advanced]
 - name: Capability
-  value: [Machine Learning]
+  value:
+  - Machine Learning
+- name: Device Type
+  value:
+  - SoC
+- name: MCU
+  value:
+  - 32-bit MCU
+- name: Project Difficulty
+  value:
+  - Advanced
 - name: Wireless Technology
-  value: [Bluetooth]
+  value:
+  - Bluetooth
 include:
 - path: .
   file_list:
@@ -34,18 +39,26 @@ component:
 - id: memory_manager
 - id: device_init
 - id: clock_manager
-- id: tensorflow_lite_micro
-- id: ml_audio_feature_generation
+- package: aiml
+  vendor: silabs
+  id: tensorflow_lite_micro
+- package: aiml
+  vendor: silabs
+  id: ml_audio_feature_generation
 - id: printf
 - id: iostream_recommended_stream
 - id: iostream_retarget_stdio
 - id: simple_led
-  instance: [led0, led1]
+  instance:
+    - led0
+    - led1
 - id: status
 - id: micriumos_kernel
 - id: power_manager
 - id: sleeptimer
-- id: tensorflow_debug_log_iostream
+- package: aiml
+  vendor: silabs
+  id: tensorflow_debug_log_iostream
 - id: app_os_helper
 - id: cli
   instance:
@@ -66,6 +79,8 @@ component:
 - id: i2cspm
   instance:
   - sensor
+- id: EFR32MG26B510F3200IM68
+- id: brd2608a
 - id: sensor_rht
 - id: simple_button
   instance:
@@ -142,10 +157,12 @@ configuration:
   - psa_crypto
 - name: SL_IOSTREAM_USART_VCOM_CONVERT_BY_DEFAULT_LF_TO_CRLF
   value: 1
-  condition: [iostream_usart]
+  condition:
+  - iostream_usart
 - name: SL_IOSTREAM_UART_VCOM_CONVERT_BY_DEFAULT_LF_TO_CRLF
   value: 1
-  condition: [iostream_uart]
+  condition:
+  - iostream_uart
 - name: SL_ML_AUDIO_FEATURE_GENERATION_AUDIO_BUFFER_SIZE
   value: 4096
 - name: SL_ML_AUDIO_FEATURE_GENERATION_AUDIO_GAIN
@@ -156,10 +173,12 @@ configuration:
   value: 0x2000
 - name: SL_SIMPLE_LED_LED1_PIN
   value: 14
-  condition: [brd2204a]
+  condition:
+  - brd2204a
 - name: SL_MVP_OPTIMIZE_SPEED
   value: 1
-  condition: [tensorflow_lite_micro_accelerated_kernels]
+  condition:
+  - tensorflow_lite_micro_accelerated_kernels
 toolchain_settings:
 - option: gcc_compiler_option
   value: -Wno-unused-parameter
@@ -181,3 +200,12 @@ tag:
 - hardware:component:microphone
 - hardware:device:ram:128
 - hardware:device:flash:130
+sdk:
+  vendor: silabs
+  id: simplicity_sdk
+  version: 2025.12.1
+sdk_extension:
+- vendor: silabs
+  id: aiml
+  version: 2.2.0
+
