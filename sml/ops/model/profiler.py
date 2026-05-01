@@ -1,3 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-MSLA
+# @file profiler.py
+# @brief Wrapper for Silicon Labs ML profiler run and parse.
+#
+# # License
+# Copyright 2026 Silicon Laboratories Inc. www.silabs.com
+#
+# The licensor of this software is Silicon Laboratories Inc. Your use of this
+# software is governed by the terms of Silicon Labs Master Software License
+# Agreement (MSLA) available at
+# www.silabs.com/about-us/legal/master-software-license-agreement. This
+# software is distributed to you in Source Code format and is governed by the
+# sections of the MSLA applicable to Source Code.
+#
+# By installing, copying or otherwise using this software, you agree to the
+# terms of the MSLA.
+
 """
 Provides a Python wrapper around Silicon Labs' ML profiler for running and parsing model profiling.
 """
