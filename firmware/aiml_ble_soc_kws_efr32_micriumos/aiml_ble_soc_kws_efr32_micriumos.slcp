@@ -2,10 +2,8 @@ project_name: aiml_ble_soc_kws_efr32_micriumos
 package: aiml_app
 quality: production
 label: AI/ML - SoC Keyword Spotting with transmission over BLE
-description: >
-  TensorFlow Lite classifies microphone audio in a Micrium OS task; keyword
-  results and optional PCM bursts are sent over GATT notifications. Health
-  Thermometer profile is included for the on-board RHT sensor.
+description: |
+  TensorFlow Lite classifies microphone audio in a Micrium OS task; keyword results and optional PCM bursts are sent over GATT notifications. Health Thermometer profile is included for the on-board RHT sensor.
 category: AI/ML Application
 filter:
 - name: Capability
@@ -54,6 +52,9 @@ component:
 - package: aiml
   vendor: silabs
   id: ml_audio_feature_generation
+- package: aiml
+  vendor: silabs
+  id: tensorflow_debug_log_iostream
 - package: aiml
   vendor: silabs
   id: tensorflow_lite_micro
