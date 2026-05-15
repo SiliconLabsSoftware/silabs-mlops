@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
   "bleak",
   "click>=8.3.1",
-  "databricks-zerobus-ingest-sdk>=1.1.0",
+  "databricks-zerobus-ingest-sdk==1.1.0",
   "dotenv>=0.9.9",
   "mlflow>=3.10.1",
   "pyyaml>=6.0.3",
