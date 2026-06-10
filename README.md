@@ -1,5 +1,8 @@
 # Silicon Labs MLOps SDK
 
+> **_NOTE:_**
+> This software package is experimental, provided “as is”, and considered “BETA SOFTWARE” under the Silicon Labs MSLA (Master Software License Agreement). SILICON LABS DOES NOT OFFER ANY SUPPORT FOR THIS EXPERIMENTAL SOFTWARE AND DISCLAIMS ALL WARRANTIES EXPRESS OR IMPLIED CONCERNING THIS EXPERIMENTAL SOFTWARE.
+
 The Silicon Labs MLOps SDK is a professional toolset designed to seamlessly bridge the gap between edge devices and cloud-based Machine Learning platforms. It provides a robust Command Line Interface (CLI) and Python API to manage the end-to-end MLOps lifecycle—focusing on high-throughput data ingestion to Databricks via ZeroBus and secure firmware/model deployment to Silicon Labs hardware via Raspberry Pi.
 
 ## Features
