@@ -30,6 +30,12 @@ exclude = ["tests*", "tests"]
 [tool.uv]
 managed = true
 
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+explicit = true
+
 [tool.pytest.ini_options]
 addopts = "--cov=sml.ops.model --cov-report=term-missing"
 testpaths = ["tests"]
