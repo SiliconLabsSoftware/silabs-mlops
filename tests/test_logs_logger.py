@@ -4,6 +4,7 @@ import json
 import os
 
 from sml.ops.logs import Logger
+from sml.ops.config import USER_AGENT
 
 class TestLogger(unittest.TestCase):
 
@@ -240,6 +241,39 @@ class TestLogger(unittest.TestCase):
                     
                     self.assertEqual(os.environ.get("DATABRICKS_HOST"), "http://fake-from-env")
                     self.assertEqual(logger.databricks_host, "http://fake-from-env")
+
+    @patch('sml.ops.logs.requests.post')
+    def test_user_agent_header_on_token(self, mock_post):
+        mock_post.return_value.json.return_value = {"access_token": "t"}
+        logger = Logger("host", "id", "secret")
+        logger._get_token()
+        self.assertEqual(mock_post.call_args.kwargs["headers"]["User-Agent"], USER_AGENT)
+
+    @patch('sml.ops.logs.requests.get')
+    def test_user_agent_header_on_warehouse(self, mock_get):
+        mock_get.return_value.json.return_value = {"warehouses": [{"name": "w", "id": "1"}]}
+        logger = Logger("host", "id", "secret", "w")
+        logger._get_token = MagicMock(return_value="t")
+        logger._resolve_warehouse_id()
+        self.assertEqual(mock_get.call_args.kwargs["headers"]["User-Agent"], USER_AGENT)
+
+    @patch('sml.ops.logs.json.load')
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('sml.ops.logs.requests.post')
+    def test_user_agent_header_on_statement(self, mock_post, mock_file, mock_load):
+        mock_load.return_value = []
+        mock_post.return_value = MagicMock(status_code=200)
+        mock_post.return_value.json.return_value = {"status": {"state": "SUCCEEDED"}}
+        logger = Logger("http://host", "id", "secret", "wn", "wid", "tab.le")
+        logger._get_token = MagicMock(return_value="token")
+        logger.log_event("Profiling", "Info", "Started")
+        sql_calls = [
+            c for c in mock_post.call_args_list
+            if c.args and c.args[0].endswith("/sql/statements")
+        ]
+        self.assertTrue(sql_calls)
+        self.assertEqual(sql_calls[-1].kwargs["headers"]["User-Agent"], USER_AGENT)
+
 
 if __name__ == '__main__':
     unittest.main()

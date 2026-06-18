@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch, MagicMock, mock_open
 from sml.ops.data.ingest.ingestor import DataIngestor
 from sml.ops.data.ingest.config import IngestConfig
+from sml.ops.config import USER_AGENT
 
 
 class TestDataIngestor(unittest.TestCase):
@@ -133,6 +134,12 @@ class TestDataIngestor(unittest.TestCase):
         mock_post.side_effect = Exception("Network Error")
         self.assertIsNone(self.ingestor._get_oauth_token())
 
+    @patch("requests.post")
+    def test_token_sets_user_agent(self, mock_post):
+        mock_post.return_value.json.return_value = {"access_token": "tkn"}
+        self.ingestor._get_oauth_token()
+        self.assertEqual(mock_post.call_args.kwargs["headers"]["User-Agent"], USER_AGENT)
+
     # ---------------------------------------------------------------------
     #  Upload to Volume Tests
     # ---------------------------------------------------------------------
@@ -161,6 +168,12 @@ class TestDataIngestor(unittest.TestCase):
     def test_upload_exception(self, mock_put):
         mock_put.side_effect = Exception("Crash")
         self.assertFalse(self.ingestor._upload_to_volume("t", b"x", "/Volumes/x"))
+
+    @patch("requests.put")
+    def test_upload_sets_user_agent(self, mock_put):
+        mock_put.return_value.status_code = 200
+        self.ingestor._upload_to_volume("t", b"x", "/Volumes/main/data/file.txt")
+        self.assertEqual(mock_put.call_args.kwargs["headers"]["User-Agent"], USER_AGENT)
 
     # ---------------------------------------------------------------------
     #  file_ingest() Tests

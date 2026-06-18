@@ -29,6 +29,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 
+from sml.ops.config import USER_AGENT
+
 
 class Logger:
     """A Common Logger to track and persist System Logs matching."""
@@ -103,7 +105,7 @@ class Logger:
             "scope": "all-apis",
         }
         try:
-            r = requests.post(token_url, data=data, timeout=30)
+            r = requests.post(token_url, data=data, headers={"User-Agent": USER_AGENT}, timeout=30)
             r.raise_for_status()
             self._access_token = r.json().get("access_token")
             return self._access_token
@@ -120,7 +122,7 @@ class Logger:
             return None
 
         url = f"{self.databricks_host}/api/2.0/sql/warehouses"
-        headers = {"Authorization": f"Bearer {token}"}
+        headers = {"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT}
         try:
             r = requests.get(url, headers=headers, timeout=30)
             r.raise_for_status()
@@ -254,6 +256,7 @@ class Logger:
                 headers = {
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
+                    "User-Agent": USER_AGENT,
                 }
                 ok, err = self._post_with_fallback(
                     url, headers, self.table_name, log_entry
@@ -352,6 +355,7 @@ class Logger:
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
         }
         print(f"--- Found {len(logs)} local logs. Syncing to {self.table_name} ---")
         success_count = 0

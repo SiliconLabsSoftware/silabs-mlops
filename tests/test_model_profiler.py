@@ -5,7 +5,7 @@ import subprocess
 import os
 
 from sml.ops.model.profiler import NPUProfiler, ProfileResult, DeviceInfo
-from sml.ops.config import Config
+from sml.ops.config import Config, USER_AGENT
 
 
 class TestNPUProfiler(unittest.TestCase):
@@ -240,6 +240,11 @@ Total adapter count: 1
         self.assertTrue(res.startswith("/Volumes/main/default/vol1/model-"))
         mock_post.assert_called_once()
         self.assertEqual(mock_put.call_count, 2)  # 1 for dir, 1 for file
+
+        # All Databricks calls must carry the attribution User-Agent
+        self.assertEqual(mock_post.call_args.kwargs["headers"]["User-Agent"], USER_AGENT)
+        for call in mock_put.call_args_list:
+            self.assertEqual(call.kwargs["headers"]["User-Agent"], USER_AGENT)
 
     @patch("pathlib.Path.exists")
     @patch("sml.ops.model.profiler.NPUProfiler._resolve_profiler")

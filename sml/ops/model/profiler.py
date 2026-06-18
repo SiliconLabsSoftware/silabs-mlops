@@ -31,7 +31,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import tempfile
 import requests
-from sml.ops.config import Config
+from sml.ops.config import Config, USER_AGENT
 from sml.ops.logs import Logger
 
 
@@ -467,6 +467,7 @@ class NPUProfiler:
                     "client_secret": Config.ZEROBUS_CLIENT_SECRET,
                     "scope": "all-apis",
                 },
+                headers={"User-Agent": USER_AGENT},
             )
             r.raise_for_status()
             token = r.json()["access_token"]
@@ -484,7 +485,7 @@ class NPUProfiler:
                     # Create remote directory structure
                     req_dir = requests.put(
                         f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/api/2.0/fs/directories{dest_dir}",
-                        headers={"Authorization": f"Bearer {token}"},
+                        headers={"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT},
                     )
                     if req_dir.status_code not in (200, 201, 204):
                         continue
@@ -496,6 +497,7 @@ class NPUProfiler:
                             headers={
                                 "Authorization": f"Bearer {token}",
                                 "Content-Type": "application/octet-stream",
+                                "User-Agent": USER_AGENT,
                             },
                             data=file_bytes,
                             params={"overwrite": "true"},
