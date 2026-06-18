@@ -28,7 +28,8 @@ from typing import List, Dict, Any, Optional
 
 from .config import IngestConfig
 from .zerobus_client import ZerobusIngestClient
-from sml.ops.logs import Logger   
+from sml.ops.logs import Logger
+from sml.ops.config import USER_AGENT
 # Suppress verbose INFO logs from ZeroBus SDK
 logging.getLogger("databricks_zerobus_ingest_sdk").setLevel(logging.WARNING)
 
@@ -162,6 +163,7 @@ class DataIngestor:
                     "client_secret": self.config.client_secret,
                     "scope": "all-apis",
                 },
+                headers={"User-Agent": USER_AGENT},
                 timeout=10,
             )
             r.raise_for_status()
@@ -187,6 +189,7 @@ class DataIngestor:
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/octet-stream",
+            "User-Agent": USER_AGENT,
         }
 
         try:

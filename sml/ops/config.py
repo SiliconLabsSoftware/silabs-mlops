@@ -27,6 +27,11 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+from sml.ops import __version__ as _SDK_VERSION
+
+# Databricks PWAF telemetry/attribution User-Agent (see Telemetry & Attribution docs).
+USER_AGENT = f"SiliconLabs_MLOpsSDK/{_SDK_VERSION}"
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env_path = BASE_DIR / ".env"
