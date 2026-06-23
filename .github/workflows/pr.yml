@@ -2,12 +2,8 @@ name: Pull Request
 
 on:
   push:
-    paths:
-      - "sml/**"
-      - "tests/**"
-      - "pyproject.toml"
-      - "uv.lock"
-      - ".github/workflows/pr.yml"
+    branches:
+      - main
   pull_request:
     paths:
       - "sml/**"
