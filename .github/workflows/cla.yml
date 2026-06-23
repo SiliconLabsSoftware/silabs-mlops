@@ -1,5 +1,4 @@
-name: 01-CLA-Assistant
-## This workflow is used for public repositories
+name: CLA Assistant
 
 on:
   workflow_dispatch:

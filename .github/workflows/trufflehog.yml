@@ -1,0 +1,23 @@
+name: TruffleHog Security Scan
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+      - "release/**"
+permissions:
+  contents: read
+
+jobs:
+  trufflehog_scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Secret Scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
