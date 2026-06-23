@@ -28,6 +28,18 @@ This makes the profiling workflow simple, secure, and fully integrated with Data
 
 The profiling library requires the Silicon Labs **MVP Profiler model profiler (mvp_profiler)** to be installed on your workstation.
 
+### Automatic Installation (Recommended)
+
+You can download and install the correct `mvp_profiler` binary for your operating system automatically using the CLI:
+
+```bash
+sml ops profile install
+```
+
+This downloads the binary into `~/.sml/bin` (override with `--dest`, overwrite with `--force`). The SDK automatically detects the profiler in `~/.sml/bin`, so no manual PATH configuration is required. To use the `mvp_profiler` command directly in your shell, add `~/.sml/bin` to your PATH.
+
+If you prefer to install the profiler manually, follow the steps below.
+
 ### 1. Setup the ML Profiler
 
 Ensure that you have downloaded and installed the mvp_profiler binary for your operating system (Windows or Linux).

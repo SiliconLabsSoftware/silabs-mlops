@@ -19,6 +19,8 @@
 Silicon Labs MLOps SDK CLI.
 """
 import os
+import shutil
+from pathlib import Path
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -103,11 +105,10 @@ def sync_logs():
     logger.sync_to_databricks()
 
 
-@ops.command()
+@ops.group(name="profile", invoke_without_command=True)
 @click.option(
     "--model-path",
     "--model",
-    required=True,
     type=click.Path(exists=True),
     help="Path to .tflite or compiled .zip model.",
 )
@@ -120,9 +121,16 @@ def sync_logs():
     "--volume-path",
     help="Directly upload results to a Databricks Volume and delete local artifacts.",
 )
-def profile(model_path, device_id, output, accelerator, platform, gui, volume_path):
+@click.pass_context
+def profile(ctx, model_path, device_id, output, accelerator, platform, gui, volume_path):
     """Profile a model using the MVP Profiler (mvp_profiler)."""
+    if ctx.invoked_subcommand is not None:
+        return
+
     from sml.ops.model import profile as run_profile
+
+    if not model_path:
+        raise click.UsageError("Missing required option '--model-path' / '--model'.")
 
     try:
         result = run_profile(
@@ -139,6 +147,36 @@ def profile(model_path, device_id, output, accelerator, platform, gui, volume_pa
     except Exception as e:
         click.echo(f"[FAIL] Profiling failed: {e}", err=True)
         raise click.Abort()
+
+
+@profile.command(name="install")
+@click.option(
+    "--dest",
+    type=click.Path(file_okay=False),
+    help="Directory to install mvp_profiler into (default: ~/.sml/bin).",
+)
+@click.option("--force", is_flag=True, help="Overwrite an existing mvp_profiler installation.")
+def profile_install(dest, force):
+    """Download and install the MVP Profiler (mvp_profiler) automatically."""
+    from sml.ops.model.profiler import NPUProfiler
+
+    profiler = NPUProfiler()
+    click.echo("Downloading mvp_profiler...")
+    try:
+        installed_path = profiler.install_profiler(dest=dest, force=force)
+    except FileExistsError as e:
+        click.echo(f"[SKIP] {e}")
+        return
+    except Exception as e:
+        click.echo(f"[FAIL] mvp_profiler installation failed: {e}", err=True)
+        raise click.Abort()
+
+    click.echo(f"[OK] mvp_profiler installed at: {installed_path}")
+
+    if shutil.which("mvp_profiler") is None and shutil.which("mvp_profiler.exe") is None:
+        install_dir = str(Path(installed_path).parent)
+        click.echo(f"Note: add '{install_dir}' to your PATH to run 'mvp_profiler' directly.")
+        click.echo("The SDK will also auto-detect it in ~/.sml/bin.")
 
 
 @ops.command(name="deploy")
