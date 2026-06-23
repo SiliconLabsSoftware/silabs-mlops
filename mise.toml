@@ -1,0 +1,6 @@
+[tools]
+trufflehog = "latest"
+
+[tasks.trufflehog]
+description = "Secret Scanning"
+run = "trufflehog git file://. --results=verified,unknown"
