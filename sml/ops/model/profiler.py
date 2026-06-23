@@ -25,6 +25,8 @@ import yaml
 import subprocess
 import shutil
 import re
+import stat
+import platform
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
@@ -92,6 +94,15 @@ class NPUProfiler:
     # Candidate binary names for mvp_profiler
     _PROFILER_CANDIDATES = ["mvp_profiler", "mvp_profiler.exe"]
 
+    # Source for automatic downloads and the SDK-managed install directory.
+    # The binaries are tracked with Git LFS, so they are served from the
+    # media.githubusercontent.com LFS endpoint rather than the raw endpoint.
+    _PROFILER_DOWNLOAD_BASE = (
+        "https://media.githubusercontent.com/media/SiliconLabsSoftware/"
+        "aiml-extension/v2.2.2-content-for-docs/tool/profiler"
+    )
+    _INSTALL_DIR = Path.home() / ".sml" / "bin"
+
     def __init__(self):
         """Initialize the profiler and the centralized CLI logger."""
         self.logger = Logger()
@@ -126,6 +137,12 @@ class NPUProfiler:
             if found:
                 return [found]
 
+        # 2b. Try the SDK-managed install directory (~/.sml/bin)
+        for name in self._PROFILER_CANDIDATES:
+            candidate = self._INSTALL_DIR / name
+            if candidate.is_file():
+                return [str(candidate)]
+
         # 3. Try python -m npu_toolkit.profiler
         try:
             # Quick check if module exists
@@ -156,6 +173,67 @@ class NPUProfiler:
             "Silicon Labs MVP Profiler (mvp_profiler) not found.\n"
             "Please ensure npu_toolkit is installed or mvp_profiler is in your PATH."
         )
+
+    def install_profiler(
+        self,
+        dest: Optional[str] = None,
+        force: bool = False,
+        timeout: int = 300,
+    ) -> str:
+        """
+        Download and install the mvp_profiler binary for the current platform.
+
+        Args:
+            dest: Target directory for the binary (default: ~/.sml/bin).
+            force: Overwrite an existing installation if True.
+            timeout: HTTP request timeout in seconds.
+
+        Returns:
+            The absolute path to the installed binary.
+        """
+        is_windows = platform.system().lower().startswith("win")
+        binary_name = "mvp_profiler.exe" if is_windows else "mvp_profiler"
+        url = f"{self._PROFILER_DOWNLOAD_BASE}/{binary_name}"
+
+        dest_dir = Path(dest) if dest else self._INSTALL_DIR
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        target = dest_dir / binary_name
+
+        if target.exists() and not force:
+            raise FileExistsError(
+                f"mvp_profiler already installed at {target}. Use force=True to overwrite."
+            )
+
+        self.logger.log_model_profiling(
+            message=f"Downloading mvp_profiler from {url}", level="Info"
+        )
+
+        tmp_fd, tmp_path = tempfile.mkstemp(prefix="mvp_profiler_", dir=str(dest_dir))
+        os.close(tmp_fd)
+        try:
+            with requests.get(url, stream=True, timeout=timeout) as r:
+                r.raise_for_status()
+                with open(tmp_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1 << 16):
+                        if chunk:
+                            f.write(chunk)
+            shutil.move(tmp_path, str(target))
+        except Exception:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            raise
+
+        if not is_windows:
+            current_mode = os.stat(target).st_mode
+            os.chmod(
+                target,
+                current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH,
+            )
+
+        self.logger.log_model_profiling(
+            message=f"Installed mvp_profiler to {target}", level="Success"
+        )
+        return str(target)
 
     def _resolve_sdm(self, profiler_path: Optional[str] = None) -> Optional[str]:
         """Resolve the sdm binary path (optional, for device discovery)."""

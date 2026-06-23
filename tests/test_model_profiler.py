@@ -49,9 +49,10 @@ class TestNPUProfiler(unittest.TestCase):
 
         self.assertTrue(any("mvp_profiler" in c for c in cmd))
 
+    @patch("pathlib.Path.is_file", return_value=False)
     @patch("shutil.which")
     @patch("subprocess.run")
-    def test_resolve_profiler_not_found(self, mock_run, mock_which):
+    def test_resolve_profiler_not_found(self, mock_run, mock_which, mock_is_file):
         mock_which.return_value = None
         mock_run.side_effect = FileNotFoundError()
 
@@ -288,6 +289,79 @@ Total adapter count: 1
         )
         self.profiler._print_summary(result)
         mock_print.assert_called()
+
+    @patch("sml.ops.model.profiler.platform.system")
+    @patch("sml.ops.model.profiler.requests.get")
+    @patch("sml.ops.model.profiler.shutil.move")
+    @patch("sml.ops.model.profiler.os.chmod")
+    @patch("sml.ops.model.profiler.tempfile.mkstemp")
+    def test_install_profiler_linux(
+        self, mock_mkstemp, mock_chmod, mock_move, mock_get, mock_system
+    ):
+        mock_system.return_value = "Linux"
+        mock_mkstemp.return_value = (3, "/tmp/mvp_profiler_tmp")
+
+        mock_resp = MagicMock()
+        mock_resp.iter_content.return_value = [b"binarydata"]
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = lambda s, *a: False
+        mock_get.return_value = mock_resp
+
+        with patch("sml.ops.model.profiler.os.close"), patch(
+            "builtins.open", new_callable=mock_open
+        ), patch("pathlib.Path.mkdir"), patch(
+            "pathlib.Path.exists", return_value=False
+        ), patch(
+            "sml.ops.model.profiler.os.stat"
+        ) as mock_stat:
+            mock_stat.return_value = MagicMock(st_mode=0o644)
+            result = self.profiler.install_profiler()
+
+        self.assertTrue(result.endswith("mvp_profiler"))
+        mock_get.assert_called_once()
+        url = mock_get.call_args[0][0]
+        self.assertTrue(url.endswith("/mvp_profiler"))
+        mock_move.assert_called_once()
+        mock_chmod.assert_called_once()
+
+    @patch("sml.ops.model.profiler.platform.system")
+    @patch("sml.ops.model.profiler.requests.get")
+    @patch("sml.ops.model.profiler.shutil.move")
+    @patch("sml.ops.model.profiler.os.chmod")
+    @patch("sml.ops.model.profiler.tempfile.mkstemp")
+    def test_install_profiler_windows(
+        self, mock_mkstemp, mock_chmod, mock_move, mock_get, mock_system
+    ):
+        mock_system.return_value = "Windows"
+        mock_mkstemp.return_value = (3, "C:/tmp/mvp_profiler_tmp")
+
+        mock_resp = MagicMock()
+        mock_resp.iter_content.return_value = [b"binarydata"]
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = lambda s, *a: False
+        mock_get.return_value = mock_resp
+
+        with patch("sml.ops.model.profiler.os.close"), patch(
+            "builtins.open", new_callable=mock_open
+        ), patch("pathlib.Path.mkdir"), patch(
+            "pathlib.Path.exists", return_value=False
+        ):
+            result = self.profiler.install_profiler()
+
+        self.assertTrue(result.endswith("mvp_profiler.exe"))
+        url = mock_get.call_args[0][0]
+        self.assertTrue(url.endswith("/mvp_profiler.exe"))
+        # No chmod on Windows
+        mock_chmod.assert_not_called()
+
+    @patch("sml.ops.model.profiler.requests.get")
+    def test_install_profiler_already_exists(self, mock_get):
+        with patch("pathlib.Path.mkdir"), patch(
+            "pathlib.Path.exists", return_value=True
+        ):
+            with self.assertRaises(FileExistsError):
+                self.profiler.install_profiler(force=False)
+        mock_get.assert_not_called()
 
 
 if __name__ == "__main__":
