@@ -34,7 +34,7 @@ pip install silabs-mlops
 
 **Verify the setup**:
 ```bash
-silabs-mlops --help
+sml ops --help
 ```
 
 ### Configuration
