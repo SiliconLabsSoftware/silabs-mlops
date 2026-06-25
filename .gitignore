@@ -6,3 +6,5 @@ profiling_results/
 .coverage
 /build
 /sml.spec
+*.slconf
+pkg.lock
