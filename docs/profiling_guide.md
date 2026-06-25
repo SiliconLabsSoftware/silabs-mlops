@@ -33,10 +33,12 @@ The profiling library requires the Silicon Labs **MVP Profiler model profiler (m
 You can download and install the correct `mvp_profiler` binary for your operating system automatically using the CLI:
 
 ```bash
-sml ops profile install
+sml install --tool profiler
 ```
 
 This downloads the binary into `~/.sml/bin` (override with `--dest`, overwrite with `--force`). The SDK automatically detects the profiler in `~/.sml/bin`, so no manual PATH configuration is required. To use the `mvp_profiler` command directly in your shell, add `~/.sml/bin` to your PATH.
+
+> **Tip:** Run `sml install` (without `--tool`) to install both the MVP Profiler and Simplicity Commander in one step.
 
 If you prefer to install the profiler manually, follow the steps below.
 
