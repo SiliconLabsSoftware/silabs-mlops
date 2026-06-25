@@ -15,29 +15,29 @@ def deployer(tmp_path: Path):
         rpi_host="192.168.1.111",
         rpi_user="aimlraspberry",
         local_file_path=str(fw),
-        commander_path="commander"
     )
 
 def test_rpi_deployer_init_validation(tmp_path: Path):
     """Ensure it raises Error if local file is missing."""
     with pytest.raises(FileNotFoundError):
-        RPiDeployer("h", "u", str(tmp_path / "missing.s37"), "cmd")
+        RPiDeployer("h", "u", str(tmp_path / "missing.s37"))
 
 def test_find_remote_commander_logic(monkeypatch, deployer):
-    """Verify smart discovery and fallback logic."""
+    """Verify smart discovery and error when commander is not found."""
     # Scenario A: Auto-discovery finds it
     def run_found(cmd, **k):
         return types.SimpleNamespace(returncode=0, stdout="/usr/bin/commander-cli\n", stderr="")
-    
+
     monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", run_found)
     assert deployer._find_remote_commander("u@h") == "/usr/bin/commander-cli"
 
-    # Scenario B: Discovery fails, use fallback from init
+    # Scenario B: Discovery fails, raises RuntimeError
     def run_fail(cmd, **k):
         return types.SimpleNamespace(returncode=1, stdout="", stderr="")
-    
+
     monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", run_fail)
-    assert deployer._find_remote_commander("u@h") == "commander"
+    with pytest.raises(RuntimeError, match="Could not locate Simplicity Commander"):
+        deployer._find_remote_commander("u@h")
 
 def test_jlink_serial_detection_parsing(monkeypatch, deployer):
     """Verify that multiple serial numbers are correctly extracted."""

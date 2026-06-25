@@ -38,7 +38,7 @@ sml install --tool profiler
 
 This downloads the binary into `~/.sml/bin` (override with `--dest`, overwrite with `--force`). The SDK automatically detects the profiler in `~/.sml/bin`, so no manual PATH configuration is required. To use the `mvp_profiler` command directly in your shell, add `~/.sml/bin` to your PATH.
 
-> **Tip:** Run `sml install` (without `--tool`) to install both the MVP Profiler and Simplicity Commander in one step.
+> **Tip:** Run `sml install --tool all` to install both the MVP Profiler and Simplicity Commander in one step.
 
 If you prefer to install the profiler manually, follow the steps below.
 
