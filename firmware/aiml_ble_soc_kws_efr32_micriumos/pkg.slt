@@ -1,7 +1,6 @@
 version = "0"
 
 [dependency]
-aiml = {version = "2.2.0", installer = "conan", prerelease = true}
-compute = {version = "5.2.2", installer = "conan", prerelease = true}
-bluetooth_le_middleware = {version = "11.0.0", installer = "conan", prerelease = true}
+aiml = {version = "2.2.2", installer = "conan", prerelease = true}
+simplicity-sdk = {version = "2025.12.3", installer = "conan", prerelease = true}
 slc-cli = "~"
