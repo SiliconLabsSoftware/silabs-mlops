@@ -31,6 +31,7 @@ __all__ = [
     "NPUProfiler",
     "ProfileResult",
     "LayerProfile",
+    "CommanderInstaller",
     "profile",
 ]
 
@@ -88,4 +89,8 @@ def __getattr__(name: str) -> Any:
         from .profiler import LayerProfile
 
         return LayerProfile
+    if name == "CommanderInstaller":
+        from .commander import CommanderInstaller
+
+        return CommanderInstaller
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

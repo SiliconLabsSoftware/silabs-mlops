@@ -149,15 +149,8 @@ def profile(ctx, model_path, device_id, output, accelerator, platform, gui, volu
         raise click.Abort()
 
 
-@profile.command(name="install")
-@click.option(
-    "--dest",
-    type=click.Path(file_okay=False),
-    help="Directory to install mvp_profiler into (default: ~/.sml/bin).",
-)
-@click.option("--force", is_flag=True, help="Overwrite an existing mvp_profiler installation.")
-def profile_install(dest, force):
-    """Download and install the MVP Profiler (mvp_profiler) automatically."""
+def _install_profiler(dest, force) -> bool:
+    """Install the MVP Profiler (mvp_profiler). Returns True on success or skip."""
     from sml.ops.model.profiler import NPUProfiler
 
     profiler = NPUProfiler()
@@ -166,10 +159,10 @@ def profile_install(dest, force):
         installed_path = profiler.install_profiler(dest=dest, force=force)
     except FileExistsError as e:
         click.echo(f"[SKIP] {e}")
-        return
+        return True
     except Exception as e:
         click.echo(f"[FAIL] mvp_profiler installation failed: {e}", err=True)
-        raise click.Abort()
+        return False
 
     click.echo(f"[OK] mvp_profiler installed at: {installed_path}")
 
@@ -177,6 +170,63 @@ def profile_install(dest, force):
         install_dir = str(Path(installed_path).parent)
         click.echo(f"Note: add '{install_dir}' to your PATH to run 'mvp_profiler' directly.")
         click.echo("The SDK will also auto-detect it in ~/.sml/bin.")
+    return True
+
+
+def _install_commander(dest, force) -> bool:
+    """Install Simplicity Commander (commander-cli). Returns True on success or skip."""
+    from sml.ops.model.commander import CommanderInstaller
+
+    installer = CommanderInstaller()
+    click.echo("Downloading Simplicity Commander...")
+    try:
+        installed_path = installer.install_commander(dest=dest, force=force)
+    except FileExistsError as e:
+        click.echo(f"[SKIP] {e}")
+        return True
+    except Exception as e:
+        click.echo(f"[FAIL] Simplicity Commander installation failed: {e}", err=True)
+        return False
+
+    click.echo(f"[OK] Simplicity Commander installed at: {installed_path}")
+
+    if shutil.which("commander-cli") is None and shutil.which("commander") is None:
+        install_dir = str(Path(installed_path).parent)
+        click.echo(f"Note: add '{install_dir}' to your PATH to run 'commander-cli' directly.")
+    return True
+
+
+@cli.command(name="install")
+@click.option(
+    "--tool",
+    type=click.Choice(["all", "commander", "profiler"]),
+    help="Which external tool(s) to install (required): 'commander', 'profiler', or 'all'.",
+)
+@click.option(
+    "--dest",
+    type=click.Path(file_okay=False),
+    help="Directory to install into (default: ~/.sml/bin).",
+)
+@click.option("--force", is_flag=True, help="Overwrite existing installation(s).")
+@click.pass_context
+def install(ctx, tool, dest, force):
+    """Download and install external tools."""
+    if tool is None:
+        click.echo(ctx.get_help())
+        click.echo(
+            "\nNo tool selected. Specify --tool with 'commander', 'profiler', or 'all'."
+        )
+        return
+
+    failures = []
+    if tool in ("all", "profiler") and not _install_profiler(dest, force):
+        failures.append("mvp_profiler")
+    if tool in ("all", "commander") and not _install_commander(dest, force):
+        failures.append("commander")
+
+    if failures:
+        click.echo(f"[FAIL] Failed to install: {', '.join(failures)}", err=True)
+        raise click.Abort()
 
 
 @ops.command(name="deploy")
