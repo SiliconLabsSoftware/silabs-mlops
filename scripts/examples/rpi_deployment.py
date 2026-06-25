@@ -39,14 +39,14 @@ def run_example():
     print(f"  RPi Host   : {rpi_host} (User: {rpi_user})\n")
 
     # CONFIGURE RPI DEPLOYMENT
+    # Simplicity Commander is discovered automatically on the Pi (system PATH,
+    # ~/.sml/bin, or ~/Desktop). Install it first if needed:
+    #   sml install --tool commander --rpi-host <RPI_IP> --rpi-user <USER>
     try:
         deployer = RPiDeployer(
             rpi_host=rpi_host,
             rpi_user=rpi_user,
             local_file_path=local_file,
-            # Path to Simplicity Commander on the Raspberry Pi. 
-            # Assumes it is available in the rpi system PATH if "commander"
-            commander_path="/home/aimlraspberry/Desktop/SimplicityCommander-Linux/commander-cli/commander-cli" 
         )
 
         # Check if the file exists locally before running

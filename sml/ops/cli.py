@@ -173,26 +173,33 @@ def _install_profiler(dest, force) -> bool:
     return True
 
 
-def _install_commander(dest, force) -> bool:
+def _install_commander(dest, force, rpi_host=None, rpi_user=None) -> bool:
     """Install Simplicity Commander (commander-cli). Returns True on success or skip."""
     from sml.ops.model.commander import CommanderInstaller
 
     installer = CommanderInstaller()
     click.echo("Downloading Simplicity Commander...")
     try:
-        installed_path = installer.install_commander(dest=dest, force=force)
+        if rpi_host:
+            installed_path = installer.install_commander_remote(
+                rpi_host=rpi_host,
+                rpi_user=rpi_user or "pi",
+                dest=dest or "~/.sml/bin",
+                force=force,
+            )
+            click.echo(f"[OK] Simplicity Commander installed on Pi at: {installed_path}")
+        else:
+            installed_path = installer.install_commander(dest=dest, force=force)
+            click.echo(f"[OK] Simplicity Commander installed at: {installed_path}")
+            if shutil.which("commander-cli") is None and shutil.which("commander") is None:
+                install_dir = str(Path(installed_path).parent)
+                click.echo(f"Note: add '{install_dir}' to your PATH to run 'commander-cli' directly.")
     except FileExistsError as e:
         click.echo(f"[SKIP] {e}")
         return True
     except Exception as e:
         click.echo(f"[FAIL] Simplicity Commander installation failed: {e}", err=True)
         return False
-
-    click.echo(f"[OK] Simplicity Commander installed at: {installed_path}")
-
-    if shutil.which("commander-cli") is None and shutil.which("commander") is None:
-        install_dir = str(Path(installed_path).parent)
-        click.echo(f"Note: add '{install_dir}' to your PATH to run 'commander-cli' directly.")
     return True
 
 
@@ -208,8 +215,18 @@ def _install_commander(dest, force) -> bool:
     help="Directory to install into (default: ~/.sml/bin).",
 )
 @click.option("--force", is_flag=True, help="Overwrite existing installation(s).")
+@click.option(
+    "--rpi-host",
+    help="Raspberry Pi hostname/IP. When provided, commander is installed on the Pi via SCP/SSH.",
+)
+@click.option(
+    "--rpi-user",
+    default="pi",
+    show_default=True,
+    help="SSH username on the Raspberry Pi (used with --rpi-host).",
+)
 @click.pass_context
-def install(ctx, tool, dest, force):
+def install(ctx, tool, dest, force, rpi_host, rpi_user):
     """Download and install external tools."""
     if tool is None:
         click.echo(ctx.get_help())
@@ -221,7 +238,9 @@ def install(ctx, tool, dest, force):
     failures = []
     if tool in ("all", "profiler") and not _install_profiler(dest, force):
         failures.append("mvp_profiler")
-    if tool in ("all", "commander") and not _install_commander(dest, force):
+    if tool in ("all", "commander") and not _install_commander(
+        dest, force, rpi_host=rpi_host, rpi_user=rpi_user
+    ):
         failures.append("commander")
 
     if failures:
@@ -232,25 +251,23 @@ def install(ctx, tool, dest, force):
 @ops.command(name="deploy")
 @click.option("--uri", required=True, help="Local file path to firmware/model (.s37/.bin/.hex).")
 @click.option("--serial", help="Target J-Link serial number (optional).")
-@click.option("--commander", help="Path to Simplicity Commander on Raspberry Pi.")
 @click.option("--rpi-host", required=True, help="Target Pi IP/Hostname.")
 @click.option("--rpi-user", default="aimlraspberry", show_default=True, help="SSH user.")
 @click.option("--remote-path", help="Optional remote path on Pi.")
-def deploy(uri, serial, commander, rpi_host, rpi_user, remote_path):
+def deploy(uri, serial, rpi_host, rpi_user, remote_path):
     """
     Deploy firmware/model to a Silicon Labs device via Raspberry Pi (SCP + SSH).
 
     Uploads the file to the Pi, runs Commander for J-Link detection, then flashes.
     """
     click.echo(f"Initializing RPi deployment for: {uri}")
-    click.echo(f"Target: {rpi_user}@{rpi_host} (commander: {commander or 'commander'})")
+    click.echo(f"Target: {rpi_user}@{rpi_host}")
 
     try:
         deployer = RPiDeployer(
             rpi_host=rpi_host,
             rpi_user=rpi_user,
             local_file_path=uri,
-            commander_path=commander or "commander",
             jlink_serial=serial,
         )
 

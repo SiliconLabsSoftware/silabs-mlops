@@ -66,8 +66,17 @@ The output will resemble: `ssh-ed25519 AAAAC3N... <user@hostname>`
 ## 2. Remote Toolchain Setup
 
 ### A. Simplicity Commander Installation
-The `RPiDeployer` requires Simplicity Commander for Linux to be present on the target Pi.
-- **Recommended Path**: `/home/<USER_NAME>/Desktop/SimplicityCommander-Linux/commander-cli/commander-cli`
+The `RPiDeployer` requires Simplicity Commander for Linux to be present on the target Pi. The recommended way is to let the SDK install it for you from your local machine:
+
+```bash
+sml install --tool commander --rpi-host <RPI_IP_ADDRESS> --rpi-user <USER_NAME>
+```
+
+This downloads the Linux Commander archive locally, detects the Pi's CPU architecture automatically (e.g. `aarch64`), and copies the correct binary package to `~/.sml/bin/commander-cli/` on the Pi via SCP.
+
+> **Note:** Add `--force` to overwrite an existing installation.
+
+After installation, `sml ops deploy` auto-discovers commander under `~/.sml/bin` on the Pi — no manual path configuration is required.
 
 ### B. Hardware Access (Udev Rules)
 To allow flashing over USB without root privileges:
@@ -96,9 +105,10 @@ Run the following command from your terminal:
 sml ops deploy \
   --uri ./model_path.s37 \
   --rpi-host <RPI_IP_ADDRESS> \
-  --rpi-user <USER_NAME> \
-  --commander "/home/<USER_NAME>/Desktop/SimplicityCommander-Linux/commander-cli/commander-cli"
+  --rpi-user <USER_NAME>
 ```
+
+Commander is located automatically on the Pi (checked in order: system PATH, `~/.sml/bin`, Desktop).
 
 ### Via Python Script
 Run the provided example in `examples/rpi_deployment.py`:
@@ -122,4 +132,9 @@ If deployment fails with an SSH timeout:
    The `RPiDeployer` includes high-resilience settings (30s timeout, 5 retries) to mitigate issues on unstable Wi-Fi networks.
 
 ### Tool Discovery
-Ensure the `commander_path` provided in the script or CLI matches the absolute path to the binary on the Raspberry Pi filesystem.
+The deployer searches for Simplicity Commander on the Pi in this order:
+1. System PATH (`which commander-cli`, `which commander`)
+2. `~/.sml/bin/commander-cli/` (installed via `sml install --tool commander --rpi-host ...`)
+3. `~/Desktop` (legacy manual install location)
+
+If commander is not found, run `sml install --tool commander --rpi-host <RPI_IP_ADDRESS> --rpi-user <USER_NAME>` to install it on the Pi.

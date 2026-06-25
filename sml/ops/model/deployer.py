@@ -42,14 +42,12 @@ class RPiDeployer:
         rpi_host: str,
         rpi_user: str,
         local_file_path: str,
-        commander_path: str,
         jlink_serial: str = None,
     ):
         self.rpi_host = rpi_host
         self.rpi_user = rpi_user
         self.local_file_path = local_file_path
-        self.commander_path = commander_path
-        self.resolved_commander = commander_path
+        self.resolved_commander = None
         self.jlink_serial = jlink_serial
 
         if not os.path.exists(self.local_file_path):
@@ -96,12 +94,15 @@ class RPiDeployer:
         self._flash_firmware(ssh_target, remote_path, serial_to_use, device_name)
 
     def _find_remote_commander(self, ssh_target: str) -> str:
+        # Each candidate is followed by "| grep ." so that an empty find/which
+        # output exits 1, allowing the || chain to continue to the next option.
         search_snippet = (
-            "which commander || "
-            "which commander-cli || "
-            "find /home/$USER/Desktop -maxdepth 3 -name commander-cli -executable -type f 2>/dev/null | head -n 1 || "
-            "find /home/$USER/Desktop -maxdepth 3 -name commander -executable -type f 2>/dev/null | head -n 1 || "
-            "find /home/$USER -maxdepth 2 -name commander -executable -type f 2>/dev/null | head -n 1"
+            "which commander-cli 2>/dev/null | grep . || "
+            "which commander 2>/dev/null | grep . || "
+            "find $HOME/.sml/bin -maxdepth 3 -name commander-cli -executable -type f 2>/dev/null | head -n 1 | grep . || "
+            "find $HOME/Desktop -maxdepth 3 -name commander-cli -executable -type f 2>/dev/null | head -n 1 | grep . || "
+            "find $HOME/Desktop -maxdepth 3 -name commander -executable -type f 2>/dev/null | head -n 1 | grep . || "
+            "find $HOME -maxdepth 4 -name commander-cli -executable -type f 2>/dev/null | head -n 1"
         )
 
         cmd = ["ssh", ssh_target, search_snippet]
@@ -112,8 +113,10 @@ class RPiDeployer:
             logger.info(f"Auto-detected commander at: {resolved}")
             return resolved
 
-        logger.warning(f"Could not auto-detect commander. Falling back to: {self.commander_path}")
-        return self.commander_path
+        raise RuntimeError(
+            "Could not locate Simplicity Commander on the Raspberry Pi. "
+            "Install it there or add it to the PATH."
+        )
 
     def _scp_firmware(self, local: str, ssh_target: str, remote: str):
         cmd = [
