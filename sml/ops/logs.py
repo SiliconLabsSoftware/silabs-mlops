@@ -299,13 +299,13 @@ class Logger:
 
             if not logs:
                 print(
-                    "\nNo local logs found"
+                    f"\nNo local logs found"
                     + (f" for type '{event_type}'." if event_type else ".")
                 )
                 return
 
             print(
-                "\n--- Local Log History"
+                f"\n--- Local Log History"
                 + (f" ({event_type})" if event_type else "")
                 + " ---"
             )

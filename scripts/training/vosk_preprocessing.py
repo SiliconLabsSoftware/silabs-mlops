@@ -1,6 +1,7 @@
 import os
 import wave
 import json
+import struct
 import difflib
 import numpy as np
 from vosk import Model, KaldiRecognizer
