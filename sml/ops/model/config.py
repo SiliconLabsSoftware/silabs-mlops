@@ -18,7 +18,6 @@
 """
 Configuration for model deployment.
 """
-
 from dataclasses import dataclass
 from typing import Optional
 

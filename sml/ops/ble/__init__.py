@@ -22,7 +22,6 @@ from .receiver import BLEReceiver
 # Module-level configuration storage
 _config: Optional[BLEConfig] = None
 
-
 def config(
     device_name: str,
     device_address: str,
@@ -33,7 +32,7 @@ def config(
     channels: int = 1,
     sample_width: int = 2,
     labels: Optional[List[str]] = None,
-    buffer_size: int = 32000,
+    buffer_size: int = 32000
 ) -> BLEConfig:
     """
     Configure the BLE hardware settings globally.
@@ -49,9 +48,8 @@ def config(
         channels=channels,
         sample_width=sample_width,
         labels=labels,
-        buffer_size=buffer_size,
+        buffer_size=buffer_size
     )
     return _config
-
 
 __all__ = ["BLEConfig", "BLEReceiver", "config"]

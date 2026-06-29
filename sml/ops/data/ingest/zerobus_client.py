@@ -18,16 +18,11 @@
 """
 ZeroBus client wrapper for Databricks ingestion.
 """
-
 from typing import Dict, Any, List, Optional, Callable
 
 try:
     from zerobus.sdk.sync import ZerobusSdk
-    from zerobus.sdk.shared import (
-        RecordType,
-        StreamConfigurationOptions,
-        TableProperties,
-    )
+    from zerobus.sdk.shared import RecordType, StreamConfigurationOptions, TableProperties
 
     ZEROBUS_AVAILABLE = True
 except ImportError:
@@ -102,9 +97,7 @@ class ZerobusIngestClient:
         if wait_for_ack:
             ack.wait_for_ack()
 
-    def ingest_batch(
-        self, records: List[Dict[str, Any]], wait_for_ack: bool = True
-    ) -> None:
+    def ingest_batch(self, records: List[Dict[str, Any]], wait_for_ack: bool = True) -> None:
         """Ingest multiple records sequentially."""
         for record in records:
             self.ingest_record(record, wait_for_ack=wait_for_ack)
@@ -114,9 +107,7 @@ class ZerobusIngestClient:
         if self._stream:
             try:
                 self._stream.close()
-                self.logger.log_data_ingestion(
-                    f"Closed ZeroBus stream for table: {self.table_name}", level="Info"
-                )
+                self.logger.log_data_ingestion(f"Closed ZeroBus stream for table: {self.table_name}", level="Info")
             except Exception as e:
                 self.logger.log_data_ingestion(
                     f"Error closing ZeroBus stream for table {self.table_name}: {e}",
@@ -124,3 +115,4 @@ class ZerobusIngestClient:
                 )
             finally:
                 self._stream = None
+
