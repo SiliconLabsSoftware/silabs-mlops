@@ -123,13 +123,12 @@ What to consider when raising a Pull Request:
 2. **Create Description**
    Fill out the pull request template.
 3. **Check the Reviewer List**
-   GitHub assigns reviewers based on the [CODEOWNERS](CODEOWNERS) file.
+   GitHub assigns reviewers based on the [CODEOWNERS](/.github/CODEOWNERS) file.
    Add more reviewers if needed. Do not remove reviewers from the PR. Ask the repository owner for updates to the code owners.
 4. **Evaluate the Action Workflow Results**
-   The following workflows are included in every repository:
-   - **[Coding Convention Check](workflows/00-Check-Code-Convention.yml)**: Analyzes the code formatting and fails if any rules are broken.
-   - **[Firmware Build](workflows/02-Build-Firmware.yml)**: Builds the firmware inside the [Dockerfile](../Dockerfile).
-   - **[Secret Scanner](workflows/04-TruffleHog-Security-Scan.yml)**: Runs the TruffleHog security scanner to look for API keys and committed secrets.
+   The following workflows should pass:
+   - **[Pull Request](/.github/workflows/pr.yml)**: Runs unit tests, analyzes code formatting and fails if any rules are broken.
+   - **[Secret Scanner](/.github/workflows/trufflehog.yml)**: Runs the TruffleHog security scanner to look for API keys and committed secrets.
 
 ### As a Reviewer
 
