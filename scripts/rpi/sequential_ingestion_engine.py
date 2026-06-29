@@ -16,7 +16,7 @@ import wave  # Required to read metadata from audio files
 # Path to Simplicity Commander
 COMMANDER_PATH = os.getenv(
     "COMMANDER_PATH",
-    str(Path.home() / "Desktop/SimplicityCommander-Linux/commander-cli/commander-cli")
+    str(Path.home() / "Desktop/SimplicityCommander-Linux/commander-cli/commander-cli"),
 )  # <- replace this path with your own commander-cli path
 
 
@@ -26,8 +26,7 @@ def get_hw_info():
         return None, None
     try:
         out = subprocess.check_output(
-            [COMMANDER_PATH, "adapter", "list"],
-            stderr=subprocess.STDOUT
+            [COMMANDER_PATH, "adapter", "list"], stderr=subprocess.STDOUT
         ).decode()
         sn_match = re.search(r"serialNumber=(\d+)", out)
         if not sn_match:
@@ -36,7 +35,7 @@ def get_hw_info():
 
         out = subprocess.check_output(
             [COMMANDER_PATH, "device", "info", "--serialno", sn],
-            stderr=subprocess.STDOUT
+            stderr=subprocess.STDOUT,
         ).decode()
         part_match = re.search(r"Part Number\s+:\s+(.+)", out)
         uid_match = re.search(r"Unique ID\s+:\s+(.+)", out)
@@ -60,12 +59,15 @@ VOLUME_PATH = os.getenv("DATABRICKS_VOLUME_PATH")
 
 MONITOR_DIR_PATH = os.getenv("AUDIO_SAMPLES_DIR")
 if not MONITOR_DIR_PATH:
-    raise EnvironmentError("AUDIO_SAMPLES_DIR is not set. Run via 'python start_ingestion.py' to configure.")
+    raise EnvironmentError(
+        "AUDIO_SAMPLES_DIR is not set. Run via 'python start_ingestion.py' to configure."
+    )
 MONITOR_DIR = Path(MONITOR_DIR_PATH)
 
 # SDK import
 try:
-    from sml.ops import data as zerobus_data   
+    from sml.ops import data as zerobus_data
+
     ZEROBUS_AVAILABLE = True
 except Exception:
     ZEROBUS_AVAILABLE = False
@@ -74,7 +76,9 @@ except Exception:
 # -----------------------------
 # Logger Setup
 # -----------------------------
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger("CloudIngestor")
 
 
@@ -93,7 +97,7 @@ def directory_monitor_thread():
         try:
             MONITOR_DIR.mkdir(parents=True, exist_ok=True)
 
-            files = [f for f in os.listdir(MONITOR_DIR) if f.lower().endswith('.wav')]
+            files = [f for f in os.listdir(MONITOR_DIR) if f.lower().endswith(".wav")]
             for f in files:
                 fpath = MONITOR_DIR / f
                 if str(fpath) not in seen_files:
@@ -131,7 +135,7 @@ def uploader_thread():
         fpath = file_queue.get()
         try:
             fname = os.path.basename(fpath)
-            parts = fname.replace('.wav', '').split('_')
+            parts = fname.replace(".wav", "").split("_")
             label = parts[0] if parts else "unknown"
 
             file_sample_rate = 16000
@@ -165,9 +169,7 @@ def uploader_thread():
 
             if ZEROBUS_AVAILABLE:
                 success = zerobus_data.file_ingest(
-                    file_path=fpath,
-                    volume_path=dest_path,
-                    metadata=metadata
+                    file_path=fpath, volume_path=dest_path, metadata=metadata
                 )
 
                 if success:
@@ -190,7 +192,9 @@ def uploader_thread():
 # -----------------------------
 def main():
     if not WORKSPACE_URL:
-        logger.error("Missing mandatory environment variables. Please set ZEROBUS_WORKSPACE_URL, etc.")
+        logger.error(
+            "Missing mandatory environment variables. Please set ZEROBUS_WORKSPACE_URL, etc."
+        )
     else:
         t1 = threading.Thread(target=directory_monitor_thread, daemon=True)
         t2 = threading.Thread(target=uploader_thread, daemon=True)

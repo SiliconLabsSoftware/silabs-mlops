@@ -15,17 +15,18 @@ import difflib
 # --------------------------
 KEYWORDS = ["on", "off"]
 DEFAULT_CONF_THRESHOLD = 0.60  # Good default for 0.5–2 s clips
-MIN_DURATION_SEC = 0.10        # Accept short clips after VAD
+MIN_DURATION_SEC = 0.10  # Accept short clips after VAD
 CHUNK_BYTES = 4000
 VERBOSE = True
 
 # Sliding-window settings (robust to gaps/unclear speech)
-WIN_MS = 500     # window size ~0.5s
-HOP_MS = 80      # stride ~80ms (overlap improves recall)
+WIN_MS = 500  # window size ~0.5s
+HOP_MS = 80  # stride ~80ms (overlap improves recall)
 
 # Aliases (common ASR confusions)
 ON_ALIASES = {"on", "one", "won", "awn", "hon", "on.", "on,", "on!"}
 OFF_ALIASES = {"off", "of", "off.", "off,", "off!"}
+
 
 # --------------------------
 # Normalization & helpers
@@ -43,6 +44,7 @@ def normalize_token(tok: str) -> str:
         return "off"
     return t
 
+
 def rms_dbfs(x: np.ndarray) -> float:
     """Return RMS in dBFS for int16 signal normalized to [-1,1]."""
     if x.size == 0:
@@ -50,6 +52,7 @@ def rms_dbfs(x: np.ndarray) -> float:
     xf = x.astype(np.float32) / 32768.0
     rms = float(np.sqrt(np.mean(xf * xf) + 1e-12))
     return 20.0 * np.log10(rms + 1e-12)
+
 
 def apply_agc(int16_audio: np.ndarray, target_dbfs: float = -20.0) -> np.ndarray:
     """Simple loudness normalization to target RMS (dBFS)."""
@@ -61,8 +64,14 @@ def apply_agc(int16_audio: np.ndarray, target_dbfs: float = -20.0) -> np.ndarray
     xf = (int16_audio.astype(np.float32) * gain).clip(-32768, 32767)
     return xf.astype(np.int16)
 
-def simple_energy_vad(int16_audio: np.ndarray, sr: int, frame_ms: float = 20.0,
-                      energy_thresh: float = 0.0005, pad_ms: float = 100.0) -> np.ndarray:
+
+def simple_energy_vad(
+    int16_audio: np.ndarray,
+    sr: int,
+    frame_ms: float = 20.0,
+    energy_thresh: float = 0.0005,
+    pad_ms: float = 100.0,
+) -> np.ndarray:
     """
     Trims leading/trailing silence using a simple energy threshold on ~20 ms frames.
     Returns a trimmed int16 mono array.
@@ -76,7 +85,7 @@ def simple_energy_vad(int16_audio: np.ndarray, sr: int, frame_ms: float = 20.0,
     frame_len = max(frame_len, 1)
     energies = []
     for i in range(0, len(x), frame_len):
-        frame = x[i:i+frame_len]
+        frame = x[i : i + frame_len]
         if len(frame) == 0:
             break
         energies.append(float(np.mean(frame * frame)))
@@ -99,6 +108,7 @@ def simple_energy_vad(int16_audio: np.ndarray, sr: int, frame_ms: float = 20.0,
     end = min(len(int16_audio), (end_f + 1) * frame_len + pad)
     return int16_audio[start:end]
 
+
 # --------------------------
 # Filename helpers
 # --------------------------
@@ -110,12 +120,16 @@ def extract_id_from_filename(fname: str) -> str:
     digits = re.sub(r"\D+", "", os.path.splitext(base)[0])
     return digits if digits else "0"
 
+
 def make_target_path(src_path: str, label: str, out_dir: Optional[str] = None) -> str:
     file_id = extract_id_from_filename(src_path)
     target_dir = out_dir if out_dir else os.path.dirname(src_path)
     return os.path.join(target_dir, f"{label}_{file_id}.wav")
 
-def copy_labeled(src_path: str, label: str, out_dir: Optional[str] = None, dry_run: bool = False):
+
+def copy_labeled(
+    src_path: str, label: str, out_dir: Optional[str] = None, dry_run: bool = False
+):
     """
     Create a renamed COPY in the output folder (keep original in inbox).
     """
@@ -142,10 +156,13 @@ def copy_labeled(src_path: str, label: str, out_dir: Optional[str] = None, dry_r
     shutil.copy2(src_path, dst_path)
     print(f"[COPIED] {os.path.basename(src_path)} -> {dst_path}")
 
+
 # --------------------------
 # Audio I/O (int16 mono, 16 kHz)
 # --------------------------
-def load_audio_int16(file_path: str, target_sr: int = 16000) -> Tuple[Optional[np.ndarray], Optional[int], Optional[float]]:
+def load_audio_int16(
+    file_path: str, target_sr: int = 16000
+) -> Tuple[Optional[np.ndarray], Optional[int], Optional[float]]:
     try:
         audio, sr = sf.read(file_path, dtype="int16", always_2d=True)
     except Exception as e:
@@ -167,6 +184,7 @@ def load_audio_int16(file_path: str, target_sr: int = 16000) -> Tuple[Optional[n
     duration = len(mono) / sr if sr and sr > 0 else 0.0
     return mono, sr, duration
 
+
 # --------------------------
 # Vosk classifier with multi-path decoding
 # --------------------------
@@ -184,7 +202,7 @@ class OnOffVosk:
         """Stream bytes into recognizer, collect partial keyword hints + final words."""
         partial_words = []
         for i in range(0, len(pcm_bytes), CHUNK_BYTES):
-            rec.AcceptWaveform(pcm_bytes[i:i+CHUNK_BYTES])
+            rec.AcceptWaveform(pcm_bytes[i : i + CHUNK_BYTES])
             try:
                 pdata = json.loads(rec.PartialResult() or "{}")
                 part = (pdata.get("partial") or "").strip().lower()
@@ -203,10 +221,12 @@ class OnOffVosk:
         final_words = []
         if "result" in fdata:
             for w in fdata["result"]:
-                final_words.append({
-                    "word": normalize_token((w.get("word") or "")),
-                    "conf": float(w.get("conf") or 0.0)
-                })
+                final_words.append(
+                    {
+                        "word": normalize_token((w.get("word") or "")),
+                        "conf": float(w.get("conf") or 0.0),
+                    }
+                )
         return final_words + partial_words, text_hint
 
     def _pick_best(self, words, text_hint: str, on_min: float, off_min: float):
@@ -239,7 +259,9 @@ class OnOffVosk:
         rec.SetGrammar('["on","off","one","won","awn","hon","of","[unk]"]')
         pcm_bytes = pcm_int16.tobytes()
         words, text_hint = self._accumulate_words(rec, pcm_bytes)
-        label, conf, best = self._pick_best(words, text_hint, self.on_min_conf, self.off_min_conf)
+        label, conf, best = self._pick_best(
+            words, text_hint, self.on_min_conf, self.off_min_conf
+        )
         return label, conf, best
 
     def _decode_windows(self, pcm_int16: np.ndarray, sr: int):
@@ -259,7 +281,9 @@ class OnOffVosk:
             rec.SetWords(True)
             rec.SetGrammar('["on","off","one","won","awn","hon","of","[unk]"]')
             words, text_hint = self._accumulate_words(rec, chunk.tobytes())
-            label, conf, best = self._pick_best(words, text_hint, self.on_min_conf, self.off_min_conf)
+            label, conf, best = self._pick_best(
+                words, text_hint, self.on_min_conf, self.off_min_conf
+            )
 
             # Track maxima
             best_overall["on"] = max(best_overall["on"], best["on"])
@@ -279,7 +303,9 @@ class OnOffVosk:
         label_full, conf_full, best_full = self._decode_clip(mono, sr)
 
         # Path B: VAD-trimmed (keeps more relevant speech; robust to leading gaps)
-        mono_vad = simple_energy_vad(mono, sr, frame_ms=20.0, energy_thresh=0.0004, pad_ms=120.0)
+        mono_vad = simple_energy_vad(
+            mono, sr, frame_ms=20.0, energy_thresh=0.0004, pad_ms=120.0
+        )
         label_vad, conf_vad, best_vad = self._decode_clip(mono_vad, sr)
 
         # Path C: Sliding windows (catches super-short 'on' fragments)
@@ -318,10 +344,13 @@ class OnOffVosk:
 
         return chosen_label, chosen_conf
 
+
 # --------------------------
 # Core processing
 # --------------------------
-def process_one_file(wav_path: str, classifier: OnOffVosk, out_dir: Optional[str], dry_run: bool):
+def process_one_file(
+    wav_path: str, classifier: OnOffVosk, out_dir: Optional[str], dry_run: bool
+):
     base = os.path.basename(wav_path)
     if not re.match(r"unknown_.*\.wav$", base, flags=re.IGNORECASE):
         if VERBOSE:
@@ -330,12 +359,21 @@ def process_one_file(wav_path: str, classifier: OnOffVosk, out_dir: Optional[str
     label, conf = classifier.predict(wav_path)
     if label in ("on", "off"):
         print(f"[DETECTED] {label.upper()} (conf={conf:.2f}) in {base}")
-        copy_labeled(wav_path, label, out_dir, dry_run=dry_run)  # COPY (keep original in inbox)
+        copy_labeled(
+            wav_path, label, out_dir, dry_run=dry_run
+        )  # COPY (keep original in inbox)
     else:
         print(f"[NO-DECISION] {base} — could not confidently detect 'on'/'off'")
 
-def process_batch(inbox: str, classifier: OnOffVosk, out_dir: Optional[str], dry_run: bool):
-    files = [os.path.join(inbox, f) for f in os.listdir(inbox) if re.match(r"unknown_.*\.wav$", f, flags=re.IGNORECASE)]
+
+def process_batch(
+    inbox: str, classifier: OnOffVosk, out_dir: Optional[str], dry_run: bool
+):
+    files = [
+        os.path.join(inbox, f)
+        for f in os.listdir(inbox)
+        if re.match(r"unknown_.*\.wav$", f, flags=re.IGNORECASE)
+    ]
     if not files:
         print("[INFO] No files matching unknown_*.wav")
         return
@@ -345,13 +383,29 @@ def process_batch(inbox: str, classifier: OnOffVosk, out_dir: Optional[str], dry
         except Exception as e:
             print(f"[ERROR] {os.path.basename(f)}: {e}")
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Detect 'on'/'off' in unknown_*.wav and copy labeled files to output.")
-    parser.add_argument("--inbox", required=True, help="Directory containing unknown_*.wav files.")
-    parser.add_argument("--model", required=True, help="Path to Vosk model (unzipped folder).")
-    parser.add_argument("--out", default=None, help="Output folder (default: <inbox>/classified).")
-    parser.add_argument("--dry", action="store_true", help="Dry-run: don't actually copy files.")
-    parser.add_argument("--threshold", type=float, default=DEFAULT_CONF_THRESHOLD, help=f"Base confidence threshold (default {DEFAULT_CONF_THRESHOLD}).")
+    parser = argparse.ArgumentParser(
+        description="Detect 'on'/'off' in unknown_*.wav and copy labeled files to output."
+    )
+    parser.add_argument(
+        "--inbox", required=True, help="Directory containing unknown_*.wav files."
+    )
+    parser.add_argument(
+        "--model", required=True, help="Path to Vosk model (unzipped folder)."
+    )
+    parser.add_argument(
+        "--out", default=None, help="Output folder (default: <inbox>/classified)."
+    )
+    parser.add_argument(
+        "--dry", action="store_true", help="Dry-run: don't actually copy files."
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=DEFAULT_CONF_THRESHOLD,
+        help=f"Base confidence threshold (default {DEFAULT_CONF_THRESHOLD}).",
+    )
     args = parser.parse_args()
 
     inbox = args.inbox
@@ -366,6 +420,7 @@ def main():
 
     classifier = OnOffVosk(args.model, conf_threshold=threshold)
     process_batch(inbox, classifier, out_dir, dry_run)
+
 
 if __name__ == "__main__":
     main()

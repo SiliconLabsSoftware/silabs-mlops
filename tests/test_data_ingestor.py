@@ -7,7 +7,6 @@ from sml.ops.config import USER_AGENT
 
 
 class TestDataIngestor(unittest.TestCase):
-
     def setUp(self):
         #  Build a realistic mock config using real IngestConfig
         self.mock_config = MagicMock(spec=IngestConfig)
@@ -18,9 +17,11 @@ class TestDataIngestor(unittest.TestCase):
         self.mock_config.client_secret = "secret"
         self.mock_config.buffer_path = "buf.json"
 
-        #  Patch only inside the ingestor module 
-        with patch("sml.ops.data.ingest.ingestor.ZerobusIngestClient"), \
-             patch("sml.ops.data.ingest.ingestor.Logger"):
+        #  Patch only inside the ingestor module
+        with (
+            patch("sml.ops.data.ingest.ingestor.ZerobusIngestClient"),
+            patch("sml.ops.data.ingest.ingestor.Logger"),
+        ):
             self.ingestor = DataIngestor(self.mock_config)
 
     # ---------------------------------------------------------------------
@@ -64,7 +65,7 @@ class TestDataIngestor(unittest.TestCase):
         content = '{"a":1}\n{"b":2}\ninvalid\n{"c":3}'
         with patch("builtins.open", mock_open(read_data=content)):
             result = self.ingestor._read_buffered_records()
-            self.assertEqual(result, [{"a":1},{"b":2},{"c":3}])
+            self.assertEqual(result, [{"a": 1}, {"b": 2}, {"c": 3}])
             mock_print.assert_called()
 
     # ---------------------------------------------------------------------
@@ -72,15 +73,19 @@ class TestDataIngestor(unittest.TestCase):
     # ---------------------------------------------------------------------
 
     def test_ingest_no_records(self):
-        with patch.object(self.ingestor, "_read_buffered_records", return_value=[]), \
-             patch("builtins.print") as mock_print:
+        with (
+            patch.object(self.ingestor, "_read_buffered_records", return_value=[]),
+            patch("builtins.print") as mock_print,
+        ):
             result = self.ingestor.ingest()
             self.assertFalse(result)
             mock_print.assert_called_with("No records to ingest.")
 
     def test_ingest_success_buffer(self):
         records = [{"a": 1}]
-        with patch.object(self.ingestor, "_read_buffered_records", return_value=records):
+        with patch.object(
+            self.ingestor, "_read_buffered_records", return_value=records
+        ):
             self.assertTrue(self.ingestor.ingest())
             self.ingestor.client.connect.assert_called_once()
             self.ingestor.client.ingest_batch.assert_called_with(records)
@@ -94,27 +99,35 @@ class TestDataIngestor(unittest.TestCase):
     @patch("builtins.print")
     def test_ingest_auth_failure(self, mock_print):
         self.ingestor.client.connect.side_effect = Exception("401 Unauthorized")
-        self.assertFalse(self.ingestor.ingest(data=[{"a":1}]))
-        mock_print.assert_any_call("\n[AUTH FAILURE] 401 Unauthorized -- check your service principal permissions.")
+        self.assertFalse(self.ingestor.ingest(data=[{"a": 1}]))
+        mock_print.assert_any_call(
+            "\n[AUTH FAILURE] 401 Unauthorized -- check your service principal permissions."
+        )
 
     @patch("builtins.print")
     def test_ingest_schema_mismatch(self, mock_print):
-        self.ingestor.client.connect.side_effect = Exception("Error 4044: decoder failure")
-        self.assertFalse(self.ingestor.ingest(data=[{"a":1}]))
-        mock_print.assert_any_call("\n[SCHEMA MISMATCH ERROR] The server rejected the record format (Code 4044).")
+        self.ingestor.client.connect.side_effect = Exception(
+            "Error 4044: decoder failure"
+        )
+        self.assertFalse(self.ingestor.ingest(data=[{"a": 1}]))
+        mock_print.assert_any_call(
+            "\n[SCHEMA MISMATCH ERROR] The server rejected the record format (Code 4044)."
+        )
 
     @patch("traceback.print_exc")
     @patch("builtins.print")
     def test_ingest_general_error(self, mock_print, mock_trace):
         self.ingestor.client.connect.side_effect = Exception("Unknown Error")
-        self.assertFalse(self.ingestor.ingest(data=[{"a":1}]))
+        self.assertFalse(self.ingestor.ingest(data=[{"a": 1}]))
         mock_print.assert_any_call("Error during ingestion: Exception: Unknown Error")
 
     @patch("builtins.print")
     def test_ingest_close_failure(self, mock_print):
         self.ingestor.client.close.side_effect = Exception("Close Error")
-        self.assertTrue(self.ingestor.ingest(data=[{"a":1}]))
-        mock_print.assert_any_call("[DEBUG] Could not cleanly close stream: Close Error")
+        self.assertTrue(self.ingestor.ingest(data=[{"a": 1}]))
+        mock_print.assert_any_call(
+            "[DEBUG] Could not cleanly close stream: Close Error"
+        )
 
     # ---------------------------------------------------------------------
     #  OAuth Token Tests
@@ -122,7 +135,7 @@ class TestDataIngestor(unittest.TestCase):
 
     @patch("requests.post")
     def test_token_success(self, mock_post):
-        mock_post.return_value.json.return_value = {"access_token":"tkn"}
+        mock_post.return_value.json.return_value = {"access_token": "tkn"}
         self.assertEqual(self.ingestor._get_oauth_token(), "tkn")
 
     def test_token_missing_creds(self):
@@ -138,7 +151,9 @@ class TestDataIngestor(unittest.TestCase):
     def test_token_sets_user_agent(self, mock_post):
         mock_post.return_value.json.return_value = {"access_token": "tkn"}
         self.ingestor._get_oauth_token()
-        self.assertEqual(mock_post.call_args.kwargs["headers"]["User-Agent"], USER_AGENT)
+        self.assertEqual(
+            mock_post.call_args.kwargs["headers"]["User-Agent"], USER_AGENT
+        )
 
     # ---------------------------------------------------------------------
     #  Upload to Volume Tests
@@ -183,11 +198,12 @@ class TestDataIngestor(unittest.TestCase):
     def test_file_ingest_success(self, mock_time):
         mock_time.return_value = 12345.0
 
-        with patch("builtins.open", mock_open(read_data=b"content")), \
-             patch.object(self.ingestor, "_get_oauth_token", return_value="tok"), \
-             patch.object(self.ingestor, "_upload_to_volume", return_value=True), \
-             patch.object(self.ingestor, "ingest", return_value=True) as mock_ing:
-
+        with (
+            patch("builtins.open", mock_open(read_data=b"content")),
+            patch.object(self.ingestor, "_get_oauth_token", return_value="tok"),
+            patch.object(self.ingestor, "_upload_to_volume", return_value=True),
+            patch.object(self.ingestor, "ingest", return_value=True) as mock_ing,
+        ):
             metadata = {"file_name": "data.csv"}
             result = self.ingestor.file_ingest("loc.csv", "/Volumes/x", metadata)
 
@@ -201,14 +217,18 @@ class TestDataIngestor(unittest.TestCase):
         self.assertFalse(self.ingestor.file_ingest("missing.csv", "/v", {}))
 
     def test_file_ingest_token_failure(self):
-        with patch("builtins.open", mock_open(read_data=b"x")), \
-             patch.object(self.ingestor, "_get_oauth_token", return_value=None):
+        with (
+            patch("builtins.open", mock_open(read_data=b"x")),
+            patch.object(self.ingestor, "_get_oauth_token", return_value=None),
+        ):
             self.assertFalse(self.ingestor.file_ingest("x", "/v", {}))
 
     def test_file_ingest_upload_failure(self):
-        with patch("builtins.open", mock_open(read_data=b"x")), \
-             patch.object(self.ingestor, "_get_oauth_token", return_value="tok"), \
-             patch.object(self.ingestor, "_upload_to_volume", return_value=False):
+        with (
+            patch("builtins.open", mock_open(read_data=b"x")),
+            patch.object(self.ingestor, "_get_oauth_token", return_value="tok"),
+            patch.object(self.ingestor, "_upload_to_volume", return_value=False),
+        ):
             self.assertFalse(self.ingestor.file_ingest("x", "/v", {}))
 
 

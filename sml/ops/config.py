@@ -23,6 +23,7 @@ application-wide configuration values such as ZeroBus endpoints, credentials,
 workspace URLs, and table names. This module centralizes all environment-driven
 settings so other components can access them in a consistent and secure way.
 """
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -62,4 +63,3 @@ class Config:
                 # Still allow adding new ZEROBUS keys even if not in the default list
                 if attr_name.startswith("ZEROBUS_"):
                     setattr(cls, attr_name, value)
-

@@ -51,7 +51,9 @@ class RPiDeployer:
         self.jlink_serial = jlink_serial
 
         if not os.path.exists(self.local_file_path):
-            raise FileNotFoundError(f"Local firmware file not found: {self.local_file_path}")
+            raise FileNotFoundError(
+                f"Local firmware file not found: {self.local_file_path}"
+            )
 
     def deploy(self, jlink_serial: str = None):
         remote_path = f"/tmp/{os.path.basename(self.local_file_path)}"
@@ -106,7 +108,9 @@ class RPiDeployer:
         )
 
         cmd = ["ssh", ssh_target, search_snippet]
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
         resolved = result.stdout.strip()
         if resolved:
@@ -128,7 +132,9 @@ class RPiDeployer:
             local,
             f"{ssh_target}:{remote}",
         ]
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
         if result.returncode != 0:
             raise RuntimeError(f"SCP failed (check network/IP):\n{result.stderr}")
@@ -144,7 +150,9 @@ class RPiDeployer:
             f"{self.resolved_commander} adapter list",
         ]
 
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
         if result.returncode != 0:
             raise RuntimeError(f"Adapter list failed:\n{result.stderr}")
@@ -163,7 +171,9 @@ class RPiDeployer:
             f"{self.resolved_commander} device info --serialno {jlink_serial}",
         ]
 
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
         print("Device info:")
         print(result.stdout)
@@ -179,7 +189,9 @@ class RPiDeployer:
         print("Detected Device Name:", device_name)
         return device_name
 
-    def _flash_firmware(self, ssh_target: str, remote_path: str, jlink_serial: str, device_name: str):
+    def _flash_firmware(
+        self, ssh_target: str, remote_path: str, jlink_serial: str, device_name: str
+    ):
         cmd = [
             "ssh",
             "-o",
@@ -192,7 +204,9 @@ class RPiDeployer:
             f"--device {device_name} -v",
         ]
 
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
         print("Flash Output:")
         print(result.stdout)
