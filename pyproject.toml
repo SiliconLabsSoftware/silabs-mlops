@@ -15,10 +15,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "ruff>=0.15.20",
-    "ty>=0.0.55",
-]
+dev = ["ruff>=0.15.20", "ty>=0.0.55"]
 test = ["pytest>=9.0.2", "pytest-cov>=7.1.0"]
 
 [project.scripts]
@@ -37,3 +34,6 @@ managed = true
 [tool.pytest.ini_options]
 addopts = "--cov=sml.ops.model --cov-report=term-missing"
 testpaths = ["tests"]
+
+[tool.ruff.lint.per-file-ignores]
+"*.ipynb" = ["F821"]
