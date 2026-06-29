@@ -198,4 +198,3 @@ def file_ingest(file_path: str, volume_path: str, metadata: Dict[str, Any]) -> b
 
     ingestor = DataIngestor(_config)
     return ingestor.file_ingest(file_path, volume_path, metadata)
-

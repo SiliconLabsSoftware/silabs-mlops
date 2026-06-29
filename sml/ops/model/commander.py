@@ -60,7 +60,12 @@ class CommanderInstaller:
     }
 
     # Candidate binary names, in install preference order (commander-cli first).
-    _BIN_CANDIDATES = ["commander-cli", "commander-cli.exe", "commander", "commander.exe"]
+    _BIN_CANDIDATES = [
+        "commander-cli",
+        "commander-cli.exe",
+        "commander",
+        "commander.exe",
+    ]
     _INSTALL_DIR = Path.home() / ".sml" / "bin"
 
     def __init__(self):
@@ -85,7 +90,11 @@ class CommanderInstaller:
             The absolute path to the installed commander binary.
         """
         system = platform.system().lower()
-        os_key = "windows" if system.startswith("win") else ("darwin" if system == "darwin" else "linux")
+        os_key = (
+            "windows"
+            if system.startswith("win")
+            else ("darwin" if system == "darwin" else "linux")
+        )
         zip_name = self._ZIP_BY_OS[os_key]
         url = f"{self._DOWNLOAD_BASE}/{zip_name}"
 
@@ -175,7 +184,9 @@ class CommanderInstaller:
         # Expand ~ on the remote side once so we have a concrete path
         expand = subprocess.run(
             ["ssh", ssh_target, f"echo {remote_pkg_dir}"],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if expand.returncode == 0 and expand.stdout.strip():
             remote_pkg_dir = expand.stdout.strip()
@@ -183,7 +194,9 @@ class CommanderInstaller:
         if not force:
             check = subprocess.run(
                 ["ssh", ssh_target, f"test -d {remote_pkg_dir} && echo exists || true"],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             if "exists" in check.stdout:
                 raise FileExistsError(
@@ -194,7 +207,9 @@ class CommanderInstaller:
         # Detect the Pi's architecture to pick the matching nested archive
         arch_result = subprocess.run(
             ["ssh", ssh_target, "uname -m"],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         remote_machine = arch_result.stdout.strip().lower()
         arch_tokens = self._ARCH_TOKENS.get(remote_machine, [remote_machine])
@@ -223,7 +238,9 @@ class CommanderInstaller:
             stage = tmp_path / "stage"
             stage.mkdir()
             base = stage
-            if not self._extract_cli_package(extract_root, stage, arch_tokens=arch_tokens):
+            if not self._extract_cli_package(
+                extract_root, stage, arch_tokens=arch_tokens
+            ):
                 base = extract_root
 
             binary = self._locate_binary(base)
@@ -243,13 +260,16 @@ class CommanderInstaller:
                 )
             subprocess.run(
                 ["ssh", ssh_target, f"mkdir -p $(dirname {remote_pkg_dir})"],
-                check=True, timeout=30,
+                check=True,
+                timeout=30,
             )
 
             # Push the entire package directory (preserves bundled libraries)
             result = subprocess.run(
                 ["scp", "-r", str(pkg_src), f"{ssh_target}:{remote_pkg_dir}"],
-                capture_output=True, text=True, timeout=300,
+                capture_output=True,
+                text=True,
+                timeout=300,
             )
             if result.returncode != 0:
                 raise RuntimeError(f"SCP to {rpi_host} failed:\n{result.stderr}")
@@ -257,7 +277,8 @@ class CommanderInstaller:
             remote_binary = f"{remote_pkg_dir}/{rel_binary}"
             subprocess.run(
                 ["ssh", ssh_target, f"chmod +x {remote_binary}"],
-                check=True, timeout=30,
+                check=True,
+                timeout=30,
             )
 
         self.logger.log_model_deployment(
@@ -317,7 +338,9 @@ class CommanderInstaller:
             archives.extend(root.rglob(pattern))
         return archives
 
-    def _score_archive(self, archive: Path, arch_tokens: Optional[List[str]] = None) -> int:
+    def _score_archive(
+        self, archive: Path, arch_tokens: Optional[List[str]] = None
+    ) -> int:
         """Score a nested archive; a higher score means a better commander-cli candidate.
 
         Args:
