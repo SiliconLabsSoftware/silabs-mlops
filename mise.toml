@@ -1,6 +1,28 @@
 [tools]
 trufflehog = "latest"
+python = "3.14"
+ruff = "latest"
+uv = "latest"
 
-[tasks.trufflehog]
+[settings]
+python.uv_venv_auto = "create|source"
+
+[tasks.scan-secrets]
 description = "Secret Scanning"
 run = "trufflehog git file://. --results=verified,unknown"
+
+[tasks.lint]
+description = "Lint using Ruff"
+run = "ruff check"
+
+[tasks.check-format]
+description = "Check formatting using Ruff"
+run = "ruff format --check"
+
+[tasks.format]
+description = "Format using Ruff"
+run = "ruff format"
+
+[tasks.test]
+description = "Run Unit tests using PyTest"
+run = "uv run pytest"

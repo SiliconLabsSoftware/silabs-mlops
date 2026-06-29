@@ -17,34 +17,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pytest:
+  pr:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.14"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.2.0
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --frozen --group test
-
-      - name: Run tests
-        run: uv run pytest
+      - name: Run Unit Tests
+        run: mise run test
 
       - name: Run Linter
-        uses: astral-sh/ruff-action@v4.0.0
-        with:
-          args: "check"
+        run: mise run lint
 
-      - name: Run Formatter
-        uses: astral-sh/ruff-action@v4.0.0
-        with:
-          args: "format --check"
-
+      - name: Check Formatting
+        run: mise run check-format
