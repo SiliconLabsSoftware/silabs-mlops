@@ -18,6 +18,7 @@
 """
 Silicon Labs MLOps SDK CLI.
 """
+
 import os
 import shutil
 from pathlib import Path
@@ -49,12 +50,19 @@ def ops():
 
 
 @ops.command()
-@click.option("--file", required=True, type=click.Path(exists=True), help="Path to JSON data file to ingest.")
+@click.option(
+    "--file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to JSON data file to ingest.",
+)
 @click.option("--endpoint", help="ZeroBus server endpoint (overrides .env)")
 @click.option("--workspace", help="Databricks workspace URL (overrides .env)")
 @click.option("--table", help="Unity Catalog table name (overrides .env)")
 @click.option("--client-id", help="Service principal client ID (overrides .env)")
-@click.option("--client-secret", help="Service principal client secret (overrides .env)")
+@click.option(
+    "--client-secret", help="Service principal client secret (overrides .env)"
+)
 def ingest(file, endpoint, workspace, table, client_id, client_secret):
     """Ingest JSON data to Databricks via ZeroBus."""
     config = IngestConfig(
@@ -79,17 +87,25 @@ def ingest(file, endpoint, workspace, table, client_id, client_secret):
         missing.append("ZEROBUS_CLIENT_SECRET")
 
     if missing:
-        click.echo(f"Error: Missing required configuration fields: {', '.join(missing)}")
+        click.echo(
+            f"Error: Missing required configuration fields: {', '.join(missing)}"
+        )
         click.echo("Set these in your .env file or provide via command-line options.")
         raise click.Abort()
 
     ingestor = DataIngestor(config)
     success = ingestor.ingest()
-    click.echo("✓ Ingestion completed successfully." if success else "✗ Ingestion failed.")
+    click.echo(
+        "✓ Ingestion completed successfully." if success else "✗ Ingestion failed."
+    )
 
 
 @ops.group(name="logs", invoke_without_command=True)
-@click.option("--type", "event_type", help='Filter logs by event type (for example: "Data Ingestion").')
+@click.option(
+    "--type",
+    "event_type",
+    help='Filter logs by event type (for example: "Data Ingestion").',
+)
 @click.pass_context
 def logs(ctx, event_type):
     """View and manage local log history."""
@@ -112,9 +128,18 @@ def sync_logs():
     type=click.Path(exists=True),
     help="Path to .tflite or compiled .zip model.",
 )
-@click.option("--device-id", "--device", help="Target device ID/Serial (auto-discovered if omitted).")
+@click.option(
+    "--device-id",
+    "--device",
+    help="Target device ID/Serial (auto-discovered if omitted).",
+)
 @click.option("--output", type=click.Path(), help="Directory for profiling results.")
-@click.option("--accelerator", default="mvpv1", show_default=True, help="Hardware accelerator target.")
+@click.option(
+    "--accelerator",
+    default="mvpv1",
+    show_default=True,
+    help="Hardware accelerator target.",
+)
 @click.option("--platform", help="Target platform board (e.g., brd2605, brd2608a).")
 @click.option("--gui", is_flag=True, help="Launch Profiler GUI.")
 @click.option(
@@ -122,7 +147,9 @@ def sync_logs():
     help="Directly upload results to a Databricks Volume and delete local artifacts.",
 )
 @click.pass_context
-def profile(ctx, model_path, device_id, output, accelerator, platform, gui, volume_path):
+def profile(
+    ctx, model_path, device_id, output, accelerator, platform, gui, volume_path
+):
     """Profile a model using the MVP Profiler (mvp_profiler)."""
     if ctx.invoked_subcommand is not None:
         return
@@ -166,9 +193,14 @@ def _install_profiler(dest, force) -> bool:
 
     click.echo(f"[OK] mvp_profiler installed at: {installed_path}")
 
-    if shutil.which("mvp_profiler") is None and shutil.which("mvp_profiler.exe") is None:
+    if (
+        shutil.which("mvp_profiler") is None
+        and shutil.which("mvp_profiler.exe") is None
+    ):
         install_dir = str(Path(installed_path).parent)
-        click.echo(f"Note: add '{install_dir}' to your PATH to run 'mvp_profiler' directly.")
+        click.echo(
+            f"Note: add '{install_dir}' to your PATH to run 'mvp_profiler' directly."
+        )
         click.echo("The SDK will also auto-detect it in ~/.sml/bin.")
     return True
 
@@ -187,13 +219,20 @@ def _install_commander(dest, force, rpi_host=None, rpi_user=None) -> bool:
                 dest=dest or "~/.sml/bin",
                 force=force,
             )
-            click.echo(f"[OK] Simplicity Commander installed on Pi at: {installed_path}")
+            click.echo(
+                f"[OK] Simplicity Commander installed on Pi at: {installed_path}"
+            )
         else:
             installed_path = installer.install_commander(dest=dest, force=force)
             click.echo(f"[OK] Simplicity Commander installed at: {installed_path}")
-            if shutil.which("commander-cli") is None and shutil.which("commander") is None:
+            if (
+                shutil.which("commander-cli") is None
+                and shutil.which("commander") is None
+            ):
                 install_dir = str(Path(installed_path).parent)
-                click.echo(f"Note: add '{install_dir}' to your PATH to run 'commander-cli' directly.")
+                click.echo(
+                    f"Note: add '{install_dir}' to your PATH to run 'commander-cli' directly."
+                )
     except FileExistsError as e:
         click.echo(f"[SKIP] {e}")
         return True
@@ -249,10 +288,14 @@ def install(ctx, tool, dest, force, rpi_host, rpi_user):
 
 
 @ops.command(name="deploy")
-@click.option("--uri", required=True, help="Local file path to firmware/model (.s37/.bin/.hex).")
+@click.option(
+    "--uri", required=True, help="Local file path to firmware/model (.s37/.bin/.hex)."
+)
 @click.option("--serial", help="Target J-Link serial number (optional).")
 @click.option("--rpi-host", required=True, help="Target Pi IP/Hostname.")
-@click.option("--rpi-user", default="aimlraspberry", show_default=True, help="SSH user.")
+@click.option(
+    "--rpi-user", default="aimlraspberry", show_default=True, help="SSH user."
+)
 @click.option("--remote-path", help="Optional remote path on Pi.")
 def deploy(uri, serial, rpi_host, rpi_user, remote_path):
     """
@@ -273,7 +316,9 @@ def deploy(uri, serial, rpi_host, rpi_user, remote_path):
 
         if remote_path:
             ssh_target = f"{rpi_user}@{rpi_host}"
-            _cli_logger.log_model_deployment(f"Targeting remote Raspberry Pi: {ssh_target}")
+            _cli_logger.log_model_deployment(
+                f"Targeting remote Raspberry Pi: {ssh_target}"
+            )
             click.echo("Connected to Raspberry Pi")
 
             deployer._scp_firmware(uri, ssh_target, remote_path)
@@ -290,16 +335,22 @@ def deploy(uri, serial, rpi_host, rpi_user, remote_path):
                     click.echo("\nMultiple devices detected. Please select one:")
                     for i, s in enumerate(serials, 1):
                         click.echo(f"{i}) J-Link Serial: {s}")
-                    choice = click.prompt(f"\nSelect board [1-{len(serials)}]", type=int)
+                    choice = click.prompt(
+                        f"\nSelect board [1-{len(serials)}]", type=int
+                    )
                     serial_to_use = serials[choice - 1]
 
             device_name = deployer._get_device_name(ssh_target, serial_to_use)
-            deployer._flash_firmware(ssh_target, remote_path, serial_to_use, device_name)
+            deployer._flash_firmware(
+                ssh_target, remote_path, serial_to_use, device_name
+            )
         else:
             deployer.deploy(jlink_serial=serial)
 
         click.echo("✓ Deployment finished successfully!")
-        _cli_logger.log_model_deployment(f"Successfully deployed {uri} to {rpi_host}", level="Success")
+        _cli_logger.log_model_deployment(
+            f"Successfully deployed {uri} to {rpi_host}", level="Success"
+        )
     except Exception as e:
         error_msg = f"Deployment failed: {e}"
         click.echo(f"✗ {error_msg}", err=True)
@@ -309,4 +360,3 @@ def deploy(uri, serial, rpi_host, rpi_user, remote_path):
 
 if __name__ == "__main__":
     cli()
-
