@@ -21,6 +21,7 @@ import time
 import struct
 import asyncio
 from typing import Optional
+import numpy as np
 from bleak import BleakClient, BleakScanner
 from .config import BLEConfig
 

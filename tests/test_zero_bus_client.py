@@ -1,9 +1,8 @@
 from unittest.mock import MagicMock, patch
 import pytest
-import sys
 
 from sml.ops.data.ingest.config import IngestConfig
-from sml.ops.data.ingest.zerobus_client import ZerobusIngestClient
+from sml.ops.data.ingest.zerobus_client import ZerobusIngestClient, ZEROBUS_AVAILABLE
 
 
 def test_config_whitespace_stripping():
@@ -22,6 +21,9 @@ def test_config_whitespace_stripping():
     assert config.table_name == "my.table"
     assert config.client_id == "1234"
     assert config.client_secret == "secret"
+
+
+import sys
 
 
 def test_zerobus_client_import_error():
