@@ -563,10 +563,7 @@ class NPUProfiler:
                     # Create remote directory structure
                     req_dir = requests.put(
                         f"{Config.ZEROBUS_WORKSPACE_URL.rstrip('/')}/api/2.0/fs/directories{dest_dir}",
-                        headers={
-                            "Authorization": f"Bearer {token}",
-                            "User-Agent": USER_AGENT,
-                        },
+                        headers={"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT},
                     )
                     if req_dir.status_code not in (200, 201, 204):
                         continue

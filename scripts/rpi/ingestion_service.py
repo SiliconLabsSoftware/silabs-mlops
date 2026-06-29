@@ -25,7 +25,9 @@ AUDIO_SAMPLES_DIR=/path/to/your/audio_samples
 
 def _ensure_required_env() -> None:
     missing = [
-        name for name in _REQUIRED_ENV_VARS if not (os.environ.get(name) or "").strip()
+        name
+        for name in _REQUIRED_ENV_VARS
+        if not (os.environ.get(name) or "").strip()
     ]
     if not missing:
         return

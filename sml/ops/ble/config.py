@@ -17,7 +17,6 @@
 
 from typing import List, Optional
 
-
 class BLEConfig:
     def __init__(
         self,
@@ -30,7 +29,7 @@ class BLEConfig:
         channels: int = 1,
         sample_width: int = 2,
         labels: Optional[List[str]] = None,
-        buffer_size: int = 32000,
+        buffer_size: int = 32000
     ):
         self.device_name = device_name
         self.device_address = device_address

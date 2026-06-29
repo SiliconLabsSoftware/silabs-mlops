@@ -243,9 +243,7 @@ Total adapter count: 1
         self.assertEqual(mock_put.call_count, 2)  # 1 for dir, 1 for file
 
         # All Databricks calls must carry the attribution User-Agent
-        self.assertEqual(
-            mock_post.call_args.kwargs["headers"]["User-Agent"], USER_AGENT
-        )
+        self.assertEqual(mock_post.call_args.kwargs["headers"]["User-Agent"], USER_AGENT)
         for call in mock_put.call_args_list:
             self.assertEqual(call.kwargs["headers"]["User-Agent"], USER_AGENT)
 
@@ -309,13 +307,13 @@ Total adapter count: 1
         mock_resp.__exit__ = lambda s, *a: False
         mock_get.return_value = mock_resp
 
-        with (
-            patch("sml.ops.model.profiler.os.close"),
-            patch("builtins.open", new_callable=mock_open),
-            patch("pathlib.Path.mkdir"),
-            patch("pathlib.Path.exists", return_value=False),
-            patch("sml.ops.model.profiler.os.stat") as mock_stat,
-        ):
+        with patch("sml.ops.model.profiler.os.close"), patch(
+            "builtins.open", new_callable=mock_open
+        ), patch("pathlib.Path.mkdir"), patch(
+            "pathlib.Path.exists", return_value=False
+        ), patch(
+            "sml.ops.model.profiler.os.stat"
+        ) as mock_stat:
             mock_stat.return_value = MagicMock(st_mode=0o644)
             result = self.profiler.install_profiler()
 
@@ -343,11 +341,10 @@ Total adapter count: 1
         mock_resp.__exit__ = lambda s, *a: False
         mock_get.return_value = mock_resp
 
-        with (
-            patch("sml.ops.model.profiler.os.close"),
-            patch("builtins.open", new_callable=mock_open),
-            patch("pathlib.Path.mkdir"),
-            patch("pathlib.Path.exists", return_value=False),
+        with patch("sml.ops.model.profiler.os.close"), patch(
+            "builtins.open", new_callable=mock_open
+        ), patch("pathlib.Path.mkdir"), patch(
+            "pathlib.Path.exists", return_value=False
         ):
             result = self.profiler.install_profiler()
 
@@ -359,9 +356,8 @@ Total adapter count: 1
 
     @patch("sml.ops.model.profiler.requests.get")
     def test_install_profiler_already_exists(self, mock_get):
-        with (
-            patch("pathlib.Path.mkdir"),
-            patch("pathlib.Path.exists", return_value=True),
+        with patch("pathlib.Path.mkdir"), patch(
+            "pathlib.Path.exists", return_value=True
         ):
             with self.assertRaises(FileExistsError):
                 self.profiler.install_profiler(force=False)

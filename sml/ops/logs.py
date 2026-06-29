@@ -105,9 +105,7 @@ class Logger:
             "scope": "all-apis",
         }
         try:
-            r = requests.post(
-                token_url, data=data, headers={"User-Agent": USER_AGENT}, timeout=30
-            )
+            r = requests.post(token_url, data=data, headers={"User-Agent": USER_AGENT}, timeout=30)
             r.raise_for_status()
             self._access_token = r.json().get("access_token")
             return self._access_token

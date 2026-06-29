@@ -18,7 +18,6 @@
 """
 Data ingestion orchestrator for ZeroBus.
 """
-
 import json
 import logging
 import traceback
@@ -31,7 +30,6 @@ from .config import IngestConfig
 from .zerobus_client import ZerobusIngestClient
 from sml.ops.logs import Logger
 from sml.ops.config import USER_AGENT
-
 # Suppress verbose INFO logs from ZeroBus SDK
 logging.getLogger("databricks_zerobus_ingest_sdk").setLevel(logging.WARNING)
 
@@ -50,9 +48,7 @@ class DataIngestor:
         )
         self.cli_logger = Logger()
 
-    def _read_buffered_records(
-        self, buffer_path: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def _read_buffered_records(self, buffer_path: Optional[str] = None) -> List[Dict[str, Any]]:
         """Read buffered JSON records from local storage (array or JSON-lines)."""
         path = buffer_path or self.config.buffer_path
         if not path:
@@ -88,11 +84,7 @@ class DataIngestor:
 
         return records
 
-    def ingest(
-        self,
-        data: Optional[List[Dict[str, Any]]] = None,
-        buffer_path: Optional[str] = None,
-    ) -> bool:
+    def ingest(self, data: Optional[List[Dict[str, Any]]] = None, buffer_path: Optional[str] = None) -> bool:
         """Main ingestion workflow."""
         records = data if data is not None else self._read_buffered_records(buffer_path)
 
@@ -100,9 +92,7 @@ class DataIngestor:
             print("No records to ingest.")
             return False
 
-        print(
-            f"Preparing to ingest {len(records)} records to {self.config.table_name}..."
-        )
+        print(f"Preparing to ingest {len(records)} records to {self.config.table_name}...")
         self.cli_logger.log_data_ingestion(
             message=f"Starting batch ingestion of {len(records)} records to table '{self.config.table_name}'",
             level="Info",
@@ -113,9 +103,7 @@ class DataIngestor:
             print(f"Connected to ZeroBus at {self.config.server_endpoint}")
 
             self.client.ingest_batch(records)
-            print(
-                f"Successfully ingested {len(records)} records to Databricks Delta Lake."
-            )
+            print(f"Successfully ingested {len(records)} records to Databricks Delta Lake.")
             self.cli_logger.log_data_ingestion(
                 message=f"Successfully ingested {len(records)} records to table '{self.config.table_name}'",
                 level="Success",
@@ -127,18 +115,14 @@ class DataIngestor:
 
             if "401" in err or "Unauthorized" in err:
                 print(f"Error during ingestion: {e}")
-                print(
-                    "\n[AUTH FAILURE] 401 Unauthorized -- check your service principal permissions."
-                )
+                print("\n[AUTH FAILURE] 401 Unauthorized -- check your service principal permissions.")
                 self.cli_logger.log_data_ingestion(
                     message=f"Ingestion failed (401 Unauthorized) for '{self.config.table_name}'",
                     level="Error",
                 )
 
             elif "4044" in err or "decoder" in err.lower() or "encoder" in err.lower():
-                print(
-                    "\n[SCHEMA MISMATCH ERROR] The server rejected the record format (Code 4044)."
-                )
+                print("\n[SCHEMA MISMATCH ERROR] The server rejected the record format (Code 4044).")
                 print(f"  Details: {err}")
                 print("  Ensure your keys match the Databricks table schema exactly.")
                 self.cli_logger.log_data_ingestion(
@@ -161,13 +145,10 @@ class DataIngestor:
             except Exception as close_err:
                 print(f"[DEBUG] Could not cleanly close stream: {close_err}")
 
+
     def _get_oauth_token(self) -> Optional[str]:
         """Fetch Databricks OAuth token using client credentials."""
-        if not (
-            self.config.workspace_url
-            and self.config.client_id
-            and self.config.client_secret
-        ):
+        if not (self.config.workspace_url and self.config.client_id and self.config.client_secret):
             print("Error: Incomplete credentials for OAuth token fetch.")
             return None
 
@@ -191,9 +172,7 @@ class DataIngestor:
             print(f"Error: OAuth token fetch failed: {e}")
             return None
 
-    def _upload_to_volume(
-        self, token: str, file_bytes: bytes, volume_path: str
-    ) -> bool:
+    def _upload_to_volume(self, token: str, file_bytes: bytes, volume_path: str) -> bool:
         """Upload a file to Databricks Unity Catalog volume."""
         p = str(volume_path).replace("\\", "/")
 
@@ -231,9 +210,7 @@ class DataIngestor:
             print(f"Error: Volume upload failed: {e}")
             return False
 
-    def file_ingest(
-        self, file_path: str, volume_path: str, metadata: Dict[str, Any]
-    ) -> bool:
+    def file_ingest(self, file_path: str, volume_path: str, metadata: Dict[str, Any]) -> bool:
         """Upload a file to a UC volume and ingest metadata using ZeroBus."""
         try:
             with open(file_path, "rb") as f:

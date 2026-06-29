@@ -15,7 +15,6 @@ import sml.ops.data
 #  Test IngestConfig
 # ======================================================================
 
-
 class TestIngestConfig(unittest.TestCase):
     def test_strip_whitespace(self):
         cfg = IngestConfig(
@@ -23,7 +22,7 @@ class TestIngestConfig(unittest.TestCase):
             workspace_url="  https://ws.url/  ",
             table_name="  t  ",
             client_id="  id  ",
-            client_secret="  sec  ",
+            client_secret="  sec  "
         )
         self.assertEqual(cfg.server_endpoint, "ep")
         self.assertEqual(cfg.workspace_url, "https://ws.url")
@@ -42,7 +41,6 @@ class TestIngestConfig(unittest.TestCase):
 # ======================================================================
 #  Test Zerobus Client
 # ======================================================================
-
 
 class TestZerobusIngestClient(unittest.TestCase):
     def setUp(self):
@@ -85,7 +83,6 @@ class TestZerobusIngestClient(unittest.TestCase):
 #  Test data module wrapper init
 # ======================================================================
 
-
 class TestDataInit(unittest.TestCase):
     def setUp(self):
         sml.ops.data._config = None
@@ -117,14 +114,11 @@ class TestDataInit(unittest.TestCase):
 # ✅ Test DataIngestor
 # ======================================================================
 
-
 class TestDataIngestor(unittest.TestCase):
     def setUp(self):
         self.config = IngestConfig("e", "https://ws.url", "t", "i", "s", "buf.json")
-        with (
-            patch.object(ingestor_mod, "ZerobusIngestClient"),
-            patch.object(ingestor_mod, "Logger"),
-        ):
+        with patch.object(ingestor_mod, "ZerobusIngestClient"), \
+             patch.object(ingestor_mod, "Logger"):
             self.ing = DataIngestor(self.config)
 
     @patch.object(ingestor_mod, "Path")
@@ -141,10 +135,8 @@ class TestDataIngestor(unittest.TestCase):
             self.assertEqual(self.ing._read_buffered_records(), [{"a": 1}])
 
     def test_ingest_no_records(self):
-        with (
-            patch.object(self.ing, "_read_buffered_records", return_value=[]),
-            patch("builtins.print") as p,
-        ):
+        with patch.object(self.ing, "_read_buffered_records", return_value=[]), \
+             patch("builtins.print") as p:
             self.assertFalse(self.ing.ingest())
             p.assert_called_with("No records to ingest.")
 
@@ -164,9 +156,7 @@ class TestDataIngestor(unittest.TestCase):
         post.return_value.json.return_value = {"access_token": "x"}
         self.assertEqual(self.ing._get_oauth_token(), "x")
 
-        post.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError(
-            "err"
-        )
+        post.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError("err")
         self.assertIsNone(self.ing._get_oauth_token())
 
 
