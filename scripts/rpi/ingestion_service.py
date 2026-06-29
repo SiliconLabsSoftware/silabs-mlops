@@ -1,6 +1,8 @@
 import os
 import sys
 
+import sequential_ingestion_engine
+
 # Variables required by sequential_ingestion_engine (and batch variant).
 _REQUIRED_ENV_VARS = (
     "ZEROBUS_WORKSPACE_URL",
@@ -25,9 +27,7 @@ AUDIO_SAMPLES_DIR=/path/to/your/audio_samples
 
 def _ensure_required_env() -> None:
     missing = [
-        name
-        for name in _REQUIRED_ENV_VARS
-        if not (os.environ.get(name) or "").strip()
+        name for name in _REQUIRED_ENV_VARS if not (os.environ.get(name) or "").strip()
     ]
     if not missing:
         return
@@ -52,7 +52,6 @@ _ensure_required_env()
 # Run the Ingestor
 # ========================
 # Option 1: Standard Ingestion (Processes & uploads one file at a time)
-import sequential_ingestion_engine
 
 # Option 2: High-Volume Simultaneous Ingestion (Processes & uploads multiple files at once)
 # (Uncomment the line below and comment Option 1 to enable parallel uploading)
