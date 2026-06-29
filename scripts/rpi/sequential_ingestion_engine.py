@@ -1,14 +1,10 @@
 import os
 import time
-import struct
 import logging
 import threading
 import queue
-import requests
 import uuid
-import base64
 from pathlib import Path
-from datetime import datetime, timezone
 import re
 import subprocess
 import wave  # Required to read metadata from audio files
