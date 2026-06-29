@@ -25,4 +25,4 @@ run = "ruff format"
 
 [tasks.test]
 description = "Run Unit tests using PyTest"
-run = "uv run pytest"
+run = "uv run --frozen --group test pytest"
