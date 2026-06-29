@@ -2,9 +2,8 @@ import unittest
 from unittest.mock import patch, mock_open, MagicMock
 from pathlib import Path
 import subprocess
-import os
 
-from sml.ops.model.profiler import NPUProfiler, ProfileResult, DeviceInfo
+from sml.ops.model.profiler import NPUProfiler, ProfileResult
 from sml.ops.config import Config, USER_AGENT
 
 

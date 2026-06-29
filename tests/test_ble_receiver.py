@@ -3,7 +3,6 @@ import sys
 import unittest
 import asyncio
 import struct
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Add project root to sys.path
@@ -11,7 +10,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from sml.ops.ble.receiver import BLEReceiver
 from sml.ops.ble.config import BLEConfig
-import sml.ops.ble
 
 
 class TestBLEReceiver(unittest.TestCase):

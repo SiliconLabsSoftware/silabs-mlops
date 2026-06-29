@@ -419,7 +419,7 @@ class NPUProfiler:
                 print("  Mode:      Simulator (Local)")
 
         print(f"\n{'=' * 60}")
-        print(f"  SILICON LABS ML MODEL PROFILER")
+        print("  SILICON LABS ML MODEL PROFILER")
         print(f"{'=' * 60}")
         print(f"  Model:     {model_p.name}")
         print(f"  Device ID: {device_id}")
@@ -752,7 +752,7 @@ class NPUProfiler:
     def _print_summary(self, result: ProfileResult):
         """Print a human-readable summary of profiling results."""
         print(f"\n{'=' * 60}")
-        print(f"  PROFILING COMPLETE")
+        print("  PROFILING COMPLETE")
         print(f"{'=' * 60}")
         print(f"  Model:      {result.model_name}")
         if result.board:
@@ -761,16 +761,16 @@ class NPUProfiler:
             print(f"  Arena Size: {result.arena_size_kb:.1f} KB")
         if result.total_macs:
             print(f"  Total MACs: {result.total_macs:,}")
-        print(f"\n  Output artifacts saved to:")
+        print("\n  Output artifacts saved to:")
         print(f"    {result.output_dir}")
         if result.summary_txt_path:
-            print(f"    [OK] summary.txt")
+            print("    [OK] summary.txt")
         if result.report_json_path:
-            print(f"    [OK] report.json")
+            print("    [OK] report.json")
         if result.history_log_path:
             print(f"    [OK] {Path(result.history_log_path).name}")
         if result.pftrace_path:
             print(f"    [OK] {Path(result.pftrace_path).name} (Perfetto trace)")
         if result.captured_packets_path:
-            print(f"    [OK] captured-packets.json")
+            print("    [OK] captured-packets.json")
         print(f"{'=' * 60}\n")
