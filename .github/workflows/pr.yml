@@ -37,3 +37,14 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+      - name: Run Linter
+        uses: astral-sh/ruff-action@v4.0.0
+        with:
+          args: "check"
+
+      - name: Run Formatter
+        uses: astral-sh/ruff-action@v4.0.0
+        with:
+          args: "format --check"
+
