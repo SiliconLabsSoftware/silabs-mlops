@@ -1,6 +1,6 @@
 [project]
 name = "sml-ops"
-version = "0.1.1"
+version = "0.1.2a1"
 description = "Silicon Labs MLOps SDK for edge devices and Databricks."
 readme = "README.md"
 requires-python = ">=3.12"
