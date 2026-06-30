@@ -39,3 +39,8 @@ pyinstaller --onefile --name sml "sml/ops/cli.py"
 [tasks.build-package]
 description = "Build package wheel"
 run = "uv build"
+
+[tasks.publish]
+description = "Build and publish package to production PyPI"
+depends = ["build-package"]
+run = "uv publish --index pypi"
