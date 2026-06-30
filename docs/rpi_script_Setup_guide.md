@@ -27,9 +27,19 @@ Before running the system, ensure the following:
 
 Before running the system, you must update the following scripts with your specific details:
 
-### 🔹 `ble_receiver.py`
+### 🔹 BLE audio collection (`sml ops ble receive` or `ble_receiver.py`)
 
-This script uses the `sml.ops.ble` SDK library to handle all Bluetooth communication. It calls `ble.config()` to pass your BLE connection parameters to the library, then starts a `BLEReceiver` loop that connects, listens for keyword detections, and saves audio files automatically.
+The recommended way to collect BLE audio is the CLI command:
+
+```bash
+sml ops ble receive \
+  --device-name "<YOUR_DEVICE_NAME>" \
+  --device-address "<YOUR_MAC_ADDRESS>" \
+  --output-dir "/path/to/your/audio_samples" \
+  --labels "on,off,unknown"
+```
+
+Alternatively, [ble_receiver.py](../scripts/rpi/ble_receiver.py) uses the `sml.ops.ble` SDK library directly. It calls `ble.config()` to pass your BLE connection parameters to the library, then starts a `BLEReceiver` loop that connects, listens for keyword detections, and saves audio files automatically.
 
 You have **two options** to provide your BLE connection parameters:
 
@@ -38,12 +48,14 @@ You have **two options** to provide your BLE connection parameters:
 ```bash
 export BLE_DEVICE_NAME="<YOUR_DEVICE_NAME>"
 export BLE_DEVICE_ADDRESS="<YOUR_MAC_ADDRESS>"
-export BLE_RESULT_UUID="<YOUR_VOICE_RESULT_UUID>"
-export BLE_DATA_UUID="<YOUR_AUDIO_DATA_UUID>"
-export AUDIO_SAMPLES_DIR="<YOUR_LOCAL_PATH>"
+export BLE_VOICE_RESULT_UUID="<YOUR_VOICE_RESULT_UUID>"
+export BLE_AUDIO_DATA_UUID="<YOUR_AUDIO_DATA_UUID>"
+export BLE_OUTPUT_DIR="<YOUR_LOCAL_PATH>"
 export BLE_SAMPLE_RATE=<YOUR_SAMPLE_RATE>
 export BLE_CHANNELS=<YOUR_CHANNELS>
 export BLE_SAMPLE_WIDTH=<YOUR_SAMPLE_WIDTH>
+export BLE_BUFFER_SIZE=<YOUR_BUFFER_SIZE>
+export BLE_SCAN_TIMEOUT=<YOUR_SCAN_TIMEOUT>
 export BLE_LABELS="<keyword1>,<keyword2>,unknown"
 ```
 
@@ -53,9 +65,9 @@ Open `ble_receiver.py` and replace the placeholders:
 ```python
 DEVICE_NAME = os.getenv("BLE_DEVICE_NAME", "<YOUR_DEVICE_NAME>")
 DEVICE_ADDRESS = os.getenv("BLE_DEVICE_ADDRESS", "<YOUR_MAC_ADDRESS>")
-VOICE_RESULT_UUID = os.getenv("BLE_RESULT_UUID", "<YOUR_VOICE_RESULT_UUID>")  #<- your metadata UUID
-AUDIO_DATA_UUID = os.getenv("BLE_DATA_UUID", "<YOUR_AUDIO_DATA_UUID>")
-OUTPUT_DIR = os.getenv("AUDIO_SAMPLES_DIR", "<YOUR_LOCAL_PATH>")
+VOICE_RESULT_UUID = os.getenv("BLE_VOICE_RESULT_UUID", "<YOUR_VOICE_RESULT_UUID>")
+AUDIO_DATA_UUID = os.getenv("BLE_AUDIO_DATA_UUID", "<YOUR_AUDIO_DATA_UUID>")
+OUTPUT_DIR = os.getenv("BLE_OUTPUT_DIR", "<YOUR_LOCAL_PATH>")
 SAMPLE_RATE = os.getenv("BLE_SAMPLE_RATE", 16000)    # <- (optional) replace these values with your own values
 CHANNELS = os.getenv("BLE_CHANNELS", 1)              # <- (optional) replace these values with your own values
 SAMPLE_WIDTH = os.getenv("BLE_SAMPLE_WIDTH", 2)      # <- (optional) replace these values with your own values
@@ -91,8 +103,8 @@ os.environ["ZEROBUS_TABLE_NAME"] = "<catalog>.<schema>.<table_name>"
 # Databricks Volume Path (Example: "/Volumes/main/default/audio_data")
 os.environ["DATABRICKS_VOLUME_PATH"] = "/Volumes/<catalog>/<schema>/<volume>"
 
-# The local folder on your Pi where files are temporarily saved. This **must match** the `OUTPUT_DIR` in ble_receiver.py
-os.environ["AUDIO_SAMPLES_DIR"] = "/path/to/your/audio_samples"
+# The local folder on your Pi where files are temporarily saved. This **must match** `BLE_OUTPUT_DIR` / `--output-dir`
+os.environ["BLE_OUTPUT_DIR"] = "/path/to/your/audio_samples"
 ```
 
 > For details on obtaining these databricks credentials, refer to the [Databricks Setup Guide](../../docs/databricks_setup_guide.md).
@@ -232,7 +244,13 @@ CREATE TABLE main.default.ble_audio_metadata (
 
 ### Step 1: Start the BLE Receiver
 
-Open a terminal and run:
+Open a terminal and run either:
+
+```bash
+sml ops ble receive
+```
+
+or the standalone script:
 
 ```bash
 python ble_receiver.py

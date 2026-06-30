@@ -20,13 +20,17 @@ import wave
 import time
 import struct
 import asyncio
-from typing import Optional
+from typing import Callable, Optional
 from bleak import BleakClient, BleakScanner
 from .config import BLEConfig
 
 
 class BLEReceiver:
-    def __init__(self, config: Optional[BLEConfig] = None):
+    def __init__(
+        self,
+        config: Optional[BLEConfig] = None,
+        log: Optional[Callable[[str], None]] = None,
+    ):
         if config is None:
             from sml.ops.ble import _config
 
@@ -37,9 +41,15 @@ class BLEReceiver:
             config = _config
 
         self.config = config
+        self._log = log or print
         self.audio_buffer = bytearray()
         self.current_label = "detection"
         self._is_running = False
+
+    def _build_filename(self, label: str) -> str:
+        addr_str = self.config.device_address.replace(":", "").replace("-", "")
+        name_str = self.config.device_name.replace(" ", "-")
+        return f"{label}_{addr_str}_{name_str}_{int(time.time())}.wav"
 
     def save_wav(self, data, filename):
         os.makedirs(self.config.output_dir, exist_ok=True)
@@ -49,7 +59,7 @@ class BLEReceiver:
             wf.setsampwidth(self.config.sample_width)
             wf.setframerate(self.config.sample_rate)
             wf.writeframes(data)
-        print(f"Saved: {filename} ({len(data)} bytes)")
+        self._log(f"Saved: {filename} ({len(data)} bytes)")
 
     async def notification_handler(self, sender, data):
         if sender.uuid.lower() == self.config.audio_data_uuid.lower():
@@ -57,10 +67,10 @@ class BLEReceiver:
             if len(self.audio_buffer) >= self.config.buffer_size:
                 final_data = self.audio_buffer[: self.config.buffer_size]
                 label_to_save = self.current_label
-                filename = f"{label_to_save}_{int(time.time())}.wav"
+                filename = self._build_filename(label_to_save)
                 self.save_wav(final_data, filename)
                 self.audio_buffer = bytearray()
-                print("--- Ready for next detection ---")
+                self._log("--- Ready for next detection ---")
 
         elif sender.uuid.lower() == self.config.voice_result_uuid.lower():
             ver, class_id, score, flags, ts = struct.unpack("<BBBB I", data)
@@ -69,34 +79,35 @@ class BLEReceiver:
                 if class_id < len(self.config.labels)
                 else "unknown"
             )
-            print(
+            self._log(
                 f"\n[EVENT] Firmware Detected: {self.current_label.upper()} (Score: {score})"
             )
             self.audio_buffer = bytearray()
 
     async def start(self):
-        print(f"Scanning for {self.config.device_name}...")
+        self._log(f"Scanning for {self.config.device_name}...")
+        timeout = self.config.scan_timeout
         device = await BleakScanner.find_device_by_address(
-            self.config.device_address, timeout=10.0
+            self.config.device_address, timeout=timeout
         )
         if not device:
             device = await BleakScanner.find_device_by_filter(
-                lambda d, ad: d.name == self.config.device_name, timeout=10.0
+                lambda d, ad: d.name == self.config.device_name, timeout=timeout
             )
 
         if not device:
-            print("Could not find device.")
+            self._log("Could not find device.")
             return
 
         async with BleakClient(device) as client:
-            print(f"Connected to {device.name}")
+            self._log(f"Connected to {device.name}")
             await client.start_notify(
                 self.config.voice_result_uuid, self.notification_handler
             )
             await client.start_notify(
                 self.config.audio_data_uuid, self.notification_handler
             )
-            print("\n--- Subscribed to Voice Events ---")
+            self._log("\n--- Subscribed to Voice Events ---")
             self._is_running = True
             while self._is_running:
                 await asyncio.sleep(1)

@@ -34,6 +34,7 @@ def config(
     sample_width: int = 2,
     labels: Optional[List[str]] = None,
     buffer_size: int = 32000,
+    scan_timeout: float = 10.0,
 ) -> BLEConfig:
     """
     Configure the BLE hardware settings globally.
@@ -50,6 +51,7 @@ def config(
         sample_width=sample_width,
         labels=labels,
         buffer_size=buffer_size,
+        scan_timeout=scan_timeout,
     )
     return _config
 

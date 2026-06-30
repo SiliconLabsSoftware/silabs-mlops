@@ -14,16 +14,22 @@ DEVICE_NAME = os.getenv("BLE_DEVICE_NAME", "<YOUR_DEVICE_NAME>")
 DEVICE_ADDRESS = os.getenv("BLE_DEVICE_ADDRESS", "<YOUR_DEVICE_MAC_ADDRESS>")
 
 # UUIDs from gatt_configuration.btconf
-VOICE_RESULT_UUID = "f7ee5e0c-1882-4c85-a6f1-8d6f81f10902"
-AUDIO_DATA_UUID = "f7ee5e0c-1882-4c85-a6f1-8d6f81f10903"
+VOICE_RESULT_UUID = os.getenv(
+    "BLE_VOICE_RESULT_UUID", "f7ee5e0c-1882-4c85-a6f1-8d6f81f10902"
+)
+AUDIO_DATA_UUID = os.getenv(
+    "BLE_AUDIO_DATA_UUID", "f7ee5e0c-1882-4c85-a6f1-8d6f81f10903"
+)
 
 # Folder path where audio samples will be saved (Local Storage Path)
-OUTPUT_DIR = os.getenv("AUDIO_SAMPLES_DIR", "/path/to/your/audio_samples")
+OUTPUT_DIR = os.getenv("BLE_OUTPUT_DIR", "/path/to/your/audio_samples")
 
 # Audio parameters
-SAMPLE_RATE = 16000
-CHANNELS = 1
-SAMPLE_WIDTH = 2  # 16-bit
+SAMPLE_RATE = int(os.getenv("BLE_SAMPLE_RATE", "16000"))
+CHANNELS = int(os.getenv("BLE_CHANNELS", "1"))
+SAMPLE_WIDTH = int(os.getenv("BLE_SAMPLE_WIDTH", "2"))  # 16-bit
+BUFFER_SIZE = int(os.getenv("BLE_BUFFER_SIZE", "32000"))
+SCAN_TIMEOUT = float(os.getenv("BLE_SCAN_TIMEOUT", "10.0"))
 
 # Class Labels (Keywords)
 _labels_env = os.getenv("BLE_LABELS")
@@ -52,8 +58,8 @@ async def notification_handler(sender, data):
 
     if sender.uuid.lower() == AUDIO_DATA_UUID.lower():
         audio_buffer.extend(data)
-        if len(audio_buffer) >= 32000:
-            final_data = audio_buffer[:32000]
+        if len(audio_buffer) >= BUFFER_SIZE:
+            final_data = audio_buffer[:BUFFER_SIZE]
             label_to_save = current_label
 
             # Filename format: label_address_name_timestamp.wav
@@ -84,6 +90,8 @@ async def main():
         channels=CHANNELS,
         sample_width=SAMPLE_WIDTH,
         labels=LABELS,
+        buffer_size=BUFFER_SIZE,
+        scan_timeout=SCAN_TIMEOUT,
     )
 
     receiver = ble.BLEReceiver()

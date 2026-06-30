@@ -2,7 +2,25 @@
 
 The Silicon Labs MLOps SDK's `ble` library provides a high-level API for connecting to Silicon Labs edge devices via Bluetooth Low Energy (BLE), receiving audio streams, and handling voice detection events.
 
-> A ready-to-use example script is provided at [ble_receiver.py](../scripts/rpi/ble_receiver.py). You can copy and edit this script directly for your project.
+> **Recommended**: Use the CLI command `sml ops ble receive` to collect audio from your board. A standalone example script is also available at [ble_receiver.py](../scripts/rpi/ble_receiver.py).
+
+---
+
+## 0. CLI: `sml ops ble receive`
+
+After installing the SDK, you can start BLE audio collection from the command line:
+
+```bash
+sml ops ble receive \
+  --device-name "<YOUR_DEVICE_NAME>" \
+  --device-address "<YOUR_MAC_ADDRESS>" \
+  --output-dir "/path/to/your/audio_samples" \
+  --labels "on,off,unknown"
+```
+
+Each option can also be set via environment variables (see below). CLI flags take precedence over env vars, which take precedence over built-in defaults.
+
+Press `Ctrl-C` to stop cleanly.
 
 ---
 
@@ -24,6 +42,7 @@ The first step is always to call `ble.config()`. This stores your hardware setti
 | `channels`          | Optional | `1`     | Audio channels. `1` = Mono, `2` = Stereo.                                                        |
 | `sample_width`      | Optional | `2`     | Bytes per audio sample. `2` = 16-bit audio.                                                      |
 | `buffer_size`       | Optional | `32000` | Total raw bytes to collect per recording before saving.                                          |
+| `scan_timeout`      | Optional | `10.0`  | BLE scan timeout in seconds before giving up.                                                    |
 
 > If you do not pass the optional parameters, the default values will be used automatically. These defaults match the most common SiLabs keyword spotting firmware configuration.
 
@@ -44,12 +63,14 @@ Set your board's details as OS environment variables before running the script. 
 ```bash
 export BLE_DEVICE_NAME="<YOUR_DEVICE_NAME>"
 export BLE_DEVICE_ADDRESS="<YOUR_MAC_ADDRESS>"
-export BLE_RESULT_UUID="<YOUR_VOICE_RESULT_UUID>"
-export BLE_DATA_UUID="<YOUR_AUDIO_DATA_UUID>"
-export AUDIO_SAMPLES_DIR="<YOUR_LOCAL_PATH>"
+export BLE_VOICE_RESULT_UUID="<YOUR_VOICE_RESULT_UUID>"
+export BLE_AUDIO_DATA_UUID="<YOUR_AUDIO_DATA_UUID>"
+export BLE_OUTPUT_DIR="<YOUR_LOCAL_PATH>"
 export BLE_SAMPLE_RATE=<YOUR_SAMPLE_RATE>
 export BLE_CHANNELS=<YOUR_CHANNELS>
 export BLE_SAMPLE_WIDTH=<YOUR_SAMPLE_WIDTH>
+export BLE_BUFFER_SIZE=<YOUR_BUFFER_SIZE>
+export BLE_SCAN_TIMEOUT=<YOUR_SCAN_TIMEOUT>
 export BLE_LABELS="<keyword1>,<keyword2>,unknown"
 ```
 
@@ -62,9 +83,9 @@ from sml.ops import ble
 ble.config(
     device_name=os.getenv("BLE_DEVICE_NAME"),
     device_address=os.getenv("BLE_DEVICE_ADDRESS"),
-    voice_result_uuid=os.getenv("BLE_RESULT_UUID"),   #<- metadata UUID
-    audio_data_uuid=os.getenv("BLE_DATA_UUID"),
-    output_dir=os.getenv("AUDIO_SAMPLES_DIR"),
+    voice_result_uuid=os.getenv("BLE_VOICE_RESULT_UUID"),
+    audio_data_uuid=os.getenv("BLE_AUDIO_DATA_UUID"),
+    output_dir=os.getenv("BLE_OUTPUT_DIR"),
     sample_rate=os.getenv("BLE_SAMPLE_RATE", 16000),  # <- (optional) replace these values with your own values
     channels=os.getenv("BLE_CHANNELS", 1),              # <- (optional) replace these values with your own values
     sample_width=os.getenv("BLE_SAMPLE_WIDTH", 2),      # <- (optional) replace these values with your own values
@@ -169,9 +190,9 @@ if __name__ == "__main__":
 Files are saved as:
 
 ```
-{label}_{unix_timestamp}.wav
+{label}_{address}_{name}_{unix_timestamp}.wav
 ```
 
-For example: `on_1711584000.wav`
+For example: `on_AABBCCDDEEFF_voice-ble-controller_1711584000.wav`
 
 The `.wav` header is automatically stamped with your configured `sample_rate`, `channels`, and `sample_width`, so any audio player will read it correctly.
