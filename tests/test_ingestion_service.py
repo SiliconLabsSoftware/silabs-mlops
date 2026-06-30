@@ -145,8 +145,9 @@ class TestIngestionService(unittest.TestCase):
 
     def test_start_stop_lifecycle(self):
         service = self._make_service()
-        with patch.object(service, "_directory_monitor"), patch.object(
-            service, "_uploader"
+        with (
+            patch.object(service, "_directory_monitor"),
+            patch.object(service, "_uploader"),
         ):
             service.start()
             self.assertTrue(service._started)

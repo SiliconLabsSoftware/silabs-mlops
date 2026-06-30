@@ -198,9 +198,7 @@ def ingest_serve(
     resolved_volume_path = _resolve_ingest_value(
         volume_path, Config.DATABRICKS_VOLUME_PATH
     )
-    resolved_commander = _resolve_ingest_value(
-        commander_path, Config.COMMANDER_PATH
-    )
+    resolved_commander = _resolve_ingest_value(commander_path, Config.COMMANDER_PATH)
     resolved_workers = workers
     if resolved_workers is None:
         try:

@@ -45,7 +45,9 @@ _DEFAULT_COMMANDER_PATH = str(
 )
 
 
-def get_hw_info(commander_path: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+def get_hw_info(
+    commander_path: Optional[str] = None,
+) -> tuple[Optional[str], Optional[str]]:
     """Return part number and unique ID from a connected board via commander-cli."""
     global _hw_cache
 
@@ -215,9 +217,7 @@ class IngestionService:
             try:
                 self.monitor_dir.mkdir(parents=True, exist_ok=True)
                 files = [
-                    f
-                    for f in os.listdir(self.monitor_dir)
-                    if self._matches_pattern(f)
+                    f for f in os.listdir(self.monitor_dir) if self._matches_pattern(f)
                 ]
                 for f in files:
                     fpath = self.monitor_dir / f

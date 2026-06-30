@@ -33,9 +33,7 @@ class TestIngestCommand(unittest.TestCase):
             path = f.name
 
         try:
-            result = self.runner.invoke(
-                cli, ["ops", "ingest", "--file", path]
-            )
+            result = self.runner.invoke(cli, ["ops", "ingest", "--file", path])
             self.assertEqual(result.exit_code, 0, result.output)
             mock_ingestor.ingest.assert_called_once()
         finally:
