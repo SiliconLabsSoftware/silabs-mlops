@@ -472,16 +472,16 @@ def receive(
 
     resolved_labels = _resolve_ble_value(labels, Config.BLE_LABELS, None)
     if isinstance(resolved_labels, str):
-        label_list = [label.strip() for label in resolved_labels.split(",") if label.strip()]
+        label_list = [
+            label.strip() for label in resolved_labels.split(",") if label.strip()
+        ]
     elif resolved_labels is None:
         label_list = _DEFAULT_LABELS
     else:
         label_list = resolved_labels
 
     resolved_config = {
-        "device_name": _resolve_ble_value(
-            device_name, Config.BLE_DEVICE_NAME, ""
-        ),
+        "device_name": _resolve_ble_value(device_name, Config.BLE_DEVICE_NAME, ""),
         "device_address": _resolve_ble_value(
             device_address, Config.BLE_DEVICE_ADDRESS, ""
         ),
@@ -501,9 +501,7 @@ def receive(
         "sample_rate": _resolve_ble_int(
             sample_rate, Config.BLE_SAMPLE_RATE, _DEFAULT_SAMPLE_RATE
         ),
-        "channels": _resolve_ble_int(
-            channels, Config.BLE_CHANNELS, _DEFAULT_CHANNELS
-        ),
+        "channels": _resolve_ble_int(channels, Config.BLE_CHANNELS, _DEFAULT_CHANNELS),
         "sample_width": _resolve_ble_int(
             sample_width, Config.BLE_SAMPLE_WIDTH, _DEFAULT_SAMPLE_WIDTH
         ),
@@ -532,9 +530,7 @@ def receive(
         _cli_logger.log_data_collection("BLE receive stopped by user.")
     except Exception as e:
         click.echo(f"[FAIL] BLE receive failed: {e}", err=True)
-        _cli_logger.log_data_collection(
-            f"BLE receive failed: {e}", level="Error"
-        )
+        _cli_logger.log_data_collection(f"BLE receive failed: {e}", level="Error")
         raise click.Abort()
 
 

@@ -17,7 +17,9 @@ class TestBleReceiveCommand(unittest.TestCase):
     @patch("sml.ops.cli.asyncio.run")
     @patch("sml.ops.ble.config")
     @patch("sml.ops.ble.BLEReceiver")
-    def test_receive_uses_cli_options(self, mock_receiver_cls, mock_ble_config, mock_run):
+    def test_receive_uses_cli_options(
+        self, mock_receiver_cls, mock_ble_config, mock_run
+    ):
         mock_receiver = MagicMock()
         mock_receiver_cls.return_value = mock_receiver
 
