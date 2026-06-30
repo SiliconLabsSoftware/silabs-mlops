@@ -10,13 +10,14 @@ The Silicon Labs MLOps SDK is a professional toolset designed to seamlessly brid
 - **Data Ingestion**: High-throughput JSON and file ingestion to Databricks Unity Catalog via ZeroBus and Workspace API.
   - `data.ingest()`: Batch metadata ingestion to Delta Tables.
   - `data.file_ingest()`: Combined binary file upload to Volumes and metadata ingestion.
+  - `data.serve()` / `IngestionService`: Continuous directory watcher that uploads new files to Databricks.
 - **Remote Hardware Deployment**: Automated model/firmware flashing to Silicon Labs chips via SCP and SSH onto a Raspberry Pi.
 - **Model profiling** — Support for edge model performance profiling using Silicon Labs AI/ML tools like ML Model Profiler on device, simulator, or in Databricks notebooks.
 - **BLE Connectivity**: Collect real-time audio and sensor data from Silicon Labs boards via Bluetooth.
   - `ble.config()`: Global configuration for UUIDs, sample rates, and labels.
   - `ble.BLEReceiver()`: Main class for managing device connection and data capture.
 - **Single global configuration** — Call `data.config()` once; data ingestion, profiling, and logging share the same Databricks and ZeroBus credentials.
-- **CLI** — The `sml` entry point supports workflows such as `sml ops ble receive` (BLE audio collection), remote deployment, and data ingestion (see the guides below).
+- **CLI** — The `sml` entry point supports workflows such as `sml ops ble receive` (BLE audio collection), `sml ops ingest serve` (continuous file ingestion), remote deployment, and one-shot JSON ingestion (`sml ops ingest --file`).
 - **Cloud integration** — Unity Catalog volumes, MLflow, and related Databricks patterns as described in the guides below.
 
 ## Key Design Principles
@@ -49,13 +50,13 @@ The Silicon Labs MLOps SDK is a professional toolset designed to seamlessly brid
 │   └── aiml_ble_soc_kws_efr32_micriumos/   (Reference BLE KWS Simplicity Studio project)
 ├── scripts/
 │   ├── examples/               (data ingestion, profiling, RPi deployment samples)
-│   ├── rpi/                    (ingestion engines, BLE receiver, ingestion service)
+│   ├── rpi/                    (ingestion service shim, BLE receiver)
 │   └── training/               (notebooks and training utilities)
 ├── sml/                        (installable Python package)
 │   └── ops/
 │       ├── ble/                (Bluetooth connectivity)
 │       ├── data/
-│       │   └── ingest/         (ZeroBus client, ingestor, ingest config)
+│       │   └── ingest/         (ZeroBus client, ingestor, ingestion service)
 │       ├── model/
 │       │   ├── profiler.py     (ML Model Profiler)
 │       │   ├── deployer.py     (Edge Deployer)

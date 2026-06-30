@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -8,6 +9,78 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from click.testing import CliRunner
 
 from sml.ops.cli import cli
+
+
+class TestIngestCommand(unittest.TestCase):
+    def setUp(self):
+        self.runner = CliRunner()
+
+    @patch("sml.ops.cli.DataIngestor")
+    @patch("sml.ops.cli.Config")
+    def test_one_shot_ingest_with_file(self, mock_config, mock_ingestor_cls):
+        mock_config.ZEROBUS_SERVER_ENDPOINT = "ep"
+        mock_config.ZEROBUS_WORKSPACE_URL = "https://ws"
+        mock_config.ZEROBUS_TABLE_NAME = "t"
+        mock_config.ZEROBUS_CLIENT_ID = "id"
+        mock_config.ZEROBUS_CLIENT_SECRET = "sec"
+
+        mock_ingestor = MagicMock()
+        mock_ingestor.ingest.return_value = True
+        mock_ingestor_cls.return_value = mock_ingestor
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            f.write('[{"a": 1}]')
+            path = f.name
+
+        try:
+            result = self.runner.invoke(cli, ["ops", "ingest", "--file", path])
+            self.assertEqual(result.exit_code, 0, result.output)
+            mock_ingestor.ingest.assert_called_once()
+        finally:
+            os.unlink(path)
+
+    def test_ingest_without_file_shows_usage_error(self):
+        result = self.runner.invoke(cli, ["ops", "ingest"])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Missing required option '--file'", result.output)
+
+    @patch("sml.ops.data.ingest.service.IngestionService")
+    @patch("sml.ops.cli.Config")
+    def test_ingest_serve_resolves_options(self, mock_config, mock_service_cls):
+        mock_config.ZEROBUS_SERVER_ENDPOINT = "ep"
+        mock_config.ZEROBUS_WORKSPACE_URL = "https://ws"
+        mock_config.ZEROBUS_TABLE_NAME = "t"
+        mock_config.ZEROBUS_CLIENT_ID = "id"
+        mock_config.ZEROBUS_CLIENT_SECRET = "sec"
+        mock_config.BLE_OUTPUT_DIR = "/tmp/audio"
+        mock_config.DATABRICKS_VOLUME_PATH = "/Volumes/main/default/data"
+        mock_config.COMMANDER_PATH = None
+        mock_config.NUM_WORKERS = "2"
+
+        mock_service = MagicMock()
+        mock_service_cls.return_value = mock_service
+        mock_service.wait.side_effect = KeyboardInterrupt
+
+        result = self.runner.invoke(
+            cli,
+            [
+                "ops",
+                "ingest",
+                "serve",
+                "--pattern",
+                "*.wav",
+                "--workers",
+                "3",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        kwargs = mock_service_cls.call_args.kwargs
+        self.assertEqual(kwargs["monitor_dir"], "/tmp/audio")
+        self.assertEqual(kwargs["volume_path"], "/Volumes/main/default/data")
+        self.assertEqual(kwargs["pattern"], "*.wav")
+        self.assertEqual(kwargs["workers"], 3)
+        mock_service.start.assert_called_once()
 
 
 class TestBleReceiveCommand(unittest.TestCase):

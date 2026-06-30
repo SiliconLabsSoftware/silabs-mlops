@@ -65,6 +65,11 @@ class Config:
     BLE_BUFFER_SIZE = os.getenv("BLE_BUFFER_SIZE")
     BLE_SCAN_TIMEOUT = os.getenv("BLE_SCAN_TIMEOUT")
 
+    # Ingestion service configuration
+    DATABRICKS_VOLUME_PATH = os.getenv("DATABRICKS_VOLUME_PATH")
+    COMMANDER_PATH = os.getenv("COMMANDER_PATH")
+    NUM_WORKERS = os.getenv("NUM_WORKERS", "4")
+
     @classmethod
     def update(cls, **kwargs):
         """Update configuration values at runtime."""

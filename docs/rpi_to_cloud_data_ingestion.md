@@ -104,76 +104,39 @@ os.environ["BLE_OUTPUT_DIR"] = "/path/to/your/audio_samples"
 
 > For details on obtaining these databricks credentials, refer to the [Databricks Setup Guide](databricks_setup_guide.md).
 
-### 🔹 Choose Your Ingestion Engine
+### 🔹 Ingestion Service Options
 
-Once your configurations are set in `ingestion_service.py` and `ble_receiver.py`, you must configure your data ingestion script. Based on your specific use case, Use **one** of the two scripts as your data ingestion engine:
+Once your configurations are set in `ingestion_service.py` and `ble_receiver.py`, tune optional environment variables:
 
-#### 1. `sequential_ingestion_engine.py` (Standard / Low-Volume)
-**Recommended Use-Case**: This is the default option. This script continuously checks your local folder and uploads single audio files one at a time to Databricks. If you only have a few data samples or a single device, this is the perfect, lightweight script for your workload (no multi-threading).
-
-This script uses **Simplicity Commander** to automatically read your connected SiLabs board's hardware ID and name. You must point it to where you installed Simplicity Commander on your Raspberry Pi.
-
-You have **two options**:
-
-**Option A – Set as an Environment Variable:**
+**Simplicity Commander** (hardware ID detection):
 ```bash
 export COMMANDER_PATH="/path/to/your/commander-cli"
 ```
-**Option B – Edit directly in the script (sequential_ingestion_engine.py):**
-```python
-COMMANDER_PATH = os.getenv("COMMANDER_PATH", "/path/to/your/commander-cli") # <- replace this path with your own commander-cli path
-```
 
-#### 2. `batch_ingestion_engine.py` (High-Volume Simultaneous)
-**Recommended Use-Case**: If you have multiple devices or a high volume of audio files streaming in rapidly, then use this script to handle simultaneous parallel uploads via worker threads. By processing a batch of files concurrently (instead of one-by-one), it drastically reduces overall upload time and prevents a backlog on your Raspberry Pi.
-
-If you choose to use the **`batch_ingestion_engine.py`** script, the base configuration in `ingestion_service.py` (your Databricks credentials) and `ble_receiver.py` mentioned above remains exactly the same. You simply need to apply a few settings regarding your commander path and worker threads (either via environment variables or directly inside the script) and modify `ingestion_service.py` to launch it:
-
-**2.1 Update Simplicity Commander Path**
-
-Just like above, configure the path to your Simplicity Commander. You have the same two options:
-
-**Option A – Set as an Environment Variable:**
+**Parallel uploads** (`NUM_WORKERS`, default `4`):
+- Use `NUM_WORKERS=1` for sequential (one file at a time).
+- Increase for high-volume parallel uploads (keep below 7 on a Raspberry Pi).
 ```bash
-export COMMANDER_PATH="/path/to/your/commander-cli"
-```
-**Option B – Edit directly in the script (`batch_ingestion_engine.py`):**
-```python
-COMMANDER_PATH = os.getenv("COMMANDER_PATH", "/path/to/your/commander-cli") # <- replace this path with your own commander-cli path
+export NUM_WORKERS=4
 ```
 
-**2.2 Handle High-Volume Ingestion (Optional)**
+**File pattern** (optional, default `*.wav`):
+```bash
+export INGEST_PATTERN="*.wav"
+```
 
-The script handles multiple simultaneous uploads using **worker threads**. If you have many audio files coming in at once, you can increase this number:
-
-- **Variable**: `NUM_WORKERS` (Default: `4`)
-- **Recommendation**: Keep this **below 7** on a Raspberry Pi to avoid system slowdown.
-- **Option A (Environment Variable)**: `export NUM_WORKERS=6`
-- **Option B (Direct Edit)**: Edit `NUM_WORKERS = int(os.getenv("NUM_WORKERS", "4"))` in `batch_ingestion_engine.py`.
-
-**2.3 Update `ingestion_service.py`**
-
-Finally, open your `ingestion_service.py` and tell it to launch the parallel ingestion script instead:
-
-* **Comment out:** `import sequential_ingestion_engine`
-* **Uncomment:** `import batch_ingestion_engine as sequential_ingestion_engine`
-
-> **Note**: If Simplicity Commander is not installed or the path is wrong in whichever script you choose, the script will skip hardware ID detection and use a generic Raspberry Pi identifier instead.
+> **Note**: If Simplicity Commander is not installed or the path is wrong, the service skips hardware ID detection and uses a generic Raspberry Pi identifier instead.
 
 ---
 
 ## 3. Overview
 
-There are four Python scripts provided in the examples folder, but you will only run **three** of them as your core gateway system:
+There are two Python scripts you run as your core gateway system:
 
 1. **`ble_receiver.py`** (Required)
 2. **`ingestion_service.py`** (Required)
-3. **`sequential_ingestion_engine.py`** *(Use for Standard Uploads)*
-4. **`batch_ingestion_engine.py`** *(Use for High-Volume Concurrent Uploads)* 
 
-You will manually execute only **two** scripts in your terminal:
-- `ble_receiver.py`
-- `ingestion_service.py`
+Both delegate to the `sml` SDK (`sml ops ble receive` and `sml ops ingest serve` are equivalent CLI commands).
 
 ### `ble_receiver.py`
 - Connects to the BLE board via Bluetooth.
@@ -181,10 +144,9 @@ You will manually execute only **two** scripts in your terminal:
 - Saves the detected audio as `.wav` files into the local folder that the upload system monitors.
 
 ### `ingestion_service.py`
-- Starts the entire upload system to Databricks.
-- This file serves as an interface between the edge device and Databricks for data ingestion. It contains the required Databricks credentials, and users must update these credentials with their own before running the system.
-- Once launched, it automatically triggers your chosen underlying ingestion script (`sequential_ingestion_engine.py` or `batch_ingestion_engine.py`) in the background.
-- You do not need to run the underlying ingestion scripts manually.
+- Thin shim that calls `sml.ops.data.serve()` with settings from your `.env`.
+- Watches the local folder for new files and uploads them to Databricks.
+- Configure credentials and paths via environment variables (see section 2).
 
 ---
 
@@ -192,7 +154,7 @@ You will manually execute only **two** scripts in your terminal:
 The data ingestion system requires a destination table in Databricks Unity Catalog. **ZeroBus does not automatically create this table or manage its schema.**
 
 ### Important: Mandatory Fields
-When the `data.file_ingest()` function is called in the ingestion script (`sequential_ingestion_engine.py` or `batch_ingestion_engine.py`), it **automatically adds** two more fields to your metadata. You do not need to provide these in your metadata dictionary; however, you **must** include these column names in your Databricks table schema:
+When the `data.file_ingest()` function is called by the ingestion service, it **automatically adds** two more fields to your metadata. You do not need to provide these in your metadata dictionary; however, you **must** include these column names in your Databricks table schema:
 
 1. **`file_path`**: The audio file path in the Databricks Volume (STRING).
 2. **`ingest_ts`**: The exact timestamp of the audio file ingestion (TIMESTAMP).
@@ -217,7 +179,7 @@ CREATE TABLE main.default.ble_audio_metadata (
 ```
 
 > [!NOTE]
-> If you want a different schema or different metadata for the audio files you are ingesting, you can modify the `metadata` dictionary in the ingestion script you have chosen (**`sequential_ingestion_engine.py`** or **`batch_ingestion_engine.py`**) to match your new schema. However, you must always include the **`file_path`** and **`ingest_ts`** fields as they are automatically provided by the SDK and are mandatory for the table creation on the Databricks side.
+> If you want a different schema or different metadata for the audio files you are ingesting, pass a custom `metadata_builder` to `IngestionService` or `data.serve()` in Python. However, you must always include the **`file_path`** and **`ingest_ts`** fields as they are automatically provided by the SDK and are mandatory for the table creation on the Databricks side.
 
 ---
 
@@ -235,11 +197,44 @@ python ble_receiver.py
 This connects to your Silicon Labs Edge device via Bluetooth. As soon as the Edge device detects a keyword locally, it transmits an audio sample to be saved in your local folder.
 
 ### Step 2: Start the Upload System
-Open a **second terminal** and run:
+Open a **second terminal** and run either:
+
+**Recommended (SDK CLI):**
+```bash
+sml ops ingest serve
+```
+
+**Python API:**
+```python
+from sml.ops import data
+
+data.config(
+    server_endpoint="...",
+    workspace_url="...",
+    table_name="...",
+    client_id="...",
+    client_secret="...",
+)
+data.serve(
+    monitor_dir="/path/to/audio_samples",  # or BLE_OUTPUT_DIR from .env
+    volume_path="/Volumes/catalog/schema/volume",
+    pattern="*.wav",
+    workers=4,
+)
+```
+
+**Legacy script (still supported):**
 ```bash
 python ingestion_service.py
 ```
-This script acts as a service manager. It automatically launches your chosen data ingestion engine (`sequential_ingestion_engine.py` or `batch_ingestion_engine.py`) in the background. The underlying engine is what strictly monitors the local folder for new `.wav` files and uploads them to Databricks. You do not need to run or do anything else.
+
+The service monitors your local folder for new files matching `--pattern` (default `*.wav`) and uploads them to Databricks. Use `--workers 1` for sequential uploads or increase for parallel uploads (default: 4, env: `NUM_WORKERS`).
+
+Required environment variables (can also be passed as CLI flags):
+- `BLE_OUTPUT_DIR` — local watch directory (`--monitor-dir`)
+- `DATABRICKS_VOLUME_PATH` — Unity Catalog volume base path (`--volume-path`)
+- `ZEROBUS_*` — ZeroBus/Databricks credentials
+- `COMMANDER_PATH` — optional path to commander-cli for hardware detection
 
 ---
 
