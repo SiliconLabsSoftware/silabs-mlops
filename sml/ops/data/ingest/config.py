@@ -35,6 +35,7 @@ class IngestConfig:
         client_id: Service principal application ID
         client_secret: Service principal secret
         buffer_path: Optional path to buffered data file (JSON lines format)
+        volume_path: Optional Databricks Unity Catalog volume base path
     """
 
     server_endpoint: str
@@ -43,6 +44,7 @@ class IngestConfig:
     client_id: str
     client_secret: str
     buffer_path: Optional[str] = None
+    volume_path: Optional[str] = None
 
     def __post_init__(self):
         """Strip whitespace from all string fields to prevent silent auth failures
@@ -61,6 +63,11 @@ class IngestConfig:
         self.client_id = self.client_id.strip() if self.client_id else self.client_id
         self.client_secret = (
             self.client_secret.strip() if self.client_secret else self.client_secret
+        )
+        self.volume_path = (
+            self.volume_path.strip().rstrip("/")
+            if self.volume_path
+            else self.volume_path
         )
         # Also strip trailing slashes on workspace_url (common copy-paste issue)
         if self.workspace_url:

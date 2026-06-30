@@ -78,12 +78,11 @@ def ops():
     pass
 
 
-@ops.command()
+@ops.group(name="ingest", invoke_without_command=True)
 @click.option(
     "--file",
-    required=True,
     type=click.Path(exists=True),
-    help="Path to JSON data file to ingest.",
+    help="Path to JSON data file to ingest (one-shot mode).",
 )
 @click.option("--endpoint", help="ZeroBus server endpoint (overrides .env)")
 @click.option("--workspace", help="Databricks workspace URL (overrides .env)")
@@ -92,8 +91,18 @@ def ops():
 @click.option(
     "--client-secret", help="Service principal client secret (overrides .env)"
 )
-def ingest(file, endpoint, workspace, table, client_id, client_secret):
-    """Ingest JSON data to Databricks via ZeroBus."""
+@click.pass_context
+def ingest(ctx, file, endpoint, workspace, table, client_id, client_secret):
+    """Ingest data to Databricks via ZeroBus."""
+    if ctx.invoked_subcommand is not None:
+        return
+
+    if not file:
+        raise click.UsageError(
+            "Missing required option '--file' for one-shot ingestion, "
+            "or use 'sml ops ingest serve' for continuous file watching."
+        )
+
     config = IngestConfig(
         server_endpoint=endpoint or Config.ZEROBUS_SERVER_ENDPOINT,
         workspace_url=workspace or Config.ZEROBUS_WORKSPACE_URL,
@@ -127,6 +136,131 @@ def ingest(file, endpoint, workspace, table, client_id, client_secret):
     click.echo(
         "✓ Ingestion completed successfully." if success else "✗ Ingestion failed."
     )
+
+
+def _resolve_ingest_value(cli_value, config_value):
+    if cli_value is not None:
+        return cli_value
+    return config_value
+
+
+@ingest.command(name="serve")
+@click.option(
+    "--monitor-dir",
+    default=None,
+    help="Directory to watch for new files (env: BLE_OUTPUT_DIR).",
+)
+@click.option(
+    "--volume-path",
+    default=None,
+    help="Databricks volume base path (env: DATABRICKS_VOLUME_PATH).",
+)
+@click.option(
+    "--pattern",
+    default="*.wav",
+    show_default=True,
+    help="Glob pattern for files to ingest.",
+)
+@click.option(
+    "--workers",
+    type=int,
+    default=None,
+    help="Parallel uploader threads (env: NUM_WORKERS, default: 4).",
+)
+@click.option(
+    "--commander-path",
+    default=None,
+    help="Path to commander-cli (env: COMMANDER_PATH).",
+)
+@click.option("--endpoint", help="ZeroBus server endpoint (overrides .env)")
+@click.option("--workspace", help="Databricks workspace URL (overrides .env)")
+@click.option("--table", help="Unity Catalog table name (overrides .env)")
+@click.option("--client-id", help="Service principal client ID (overrides .env)")
+@click.option(
+    "--client-secret", help="Service principal client secret (overrides .env)"
+)
+def ingest_serve(
+    monitor_dir,
+    volume_path,
+    pattern,
+    workers,
+    commander_path,
+    endpoint,
+    workspace,
+    table,
+    client_id,
+    client_secret,
+):
+    """Watch a directory and continuously ingest files to Databricks."""
+    from sml.ops.data.ingest.service import IngestionService
+
+    resolved_monitor_dir = _resolve_ingest_value(monitor_dir, Config.BLE_OUTPUT_DIR)
+    resolved_volume_path = _resolve_ingest_value(
+        volume_path, Config.DATABRICKS_VOLUME_PATH
+    )
+    resolved_commander = _resolve_ingest_value(
+        commander_path, Config.COMMANDER_PATH
+    )
+    resolved_workers = workers
+    if resolved_workers is None:
+        try:
+            resolved_workers = int(Config.NUM_WORKERS or "4")
+        except ValueError:
+            resolved_workers = 4
+
+    config = IngestConfig(
+        server_endpoint=endpoint or Config.ZEROBUS_SERVER_ENDPOINT,
+        workspace_url=workspace or Config.ZEROBUS_WORKSPACE_URL,
+        table_name=table or Config.ZEROBUS_TABLE_NAME,
+        client_id=client_id or Config.ZEROBUS_CLIENT_ID,
+        client_secret=client_secret or Config.ZEROBUS_CLIENT_SECRET,
+        volume_path=resolved_volume_path,
+    )
+
+    missing = []
+    if not config.server_endpoint:
+        missing.append("ZEROBUS_SERVER_ENDPOINT")
+    if not config.workspace_url:
+        missing.append("ZEROBUS_WORKSPACE_URL")
+    if not config.table_name:
+        missing.append("ZEROBUS_TABLE_NAME")
+    if not config.client_id:
+        missing.append("ZEROBUS_CLIENT_ID")
+    if not config.client_secret:
+        missing.append("ZEROBUS_CLIENT_SECRET")
+    if not resolved_monitor_dir:
+        missing.append("BLE_OUTPUT_DIR (or --monitor-dir)")
+    if not resolved_volume_path:
+        missing.append("DATABRICKS_VOLUME_PATH (or --volume-path)")
+
+    if missing:
+        click.echo(
+            f"Error: Missing required configuration fields: {', '.join(missing)}"
+        )
+        click.echo("Set these in your .env file or provide via command-line options.")
+        raise click.Abort()
+
+    def _emit(message: str):
+        click.echo(message)
+        _cli_logger.log_data_ingestion(message)
+
+    service = IngestionService(
+        config=config,
+        monitor_dir=resolved_monitor_dir,
+        volume_path=resolved_volume_path,
+        pattern=pattern,
+        workers=resolved_workers,
+        commander_path=resolved_commander,
+        log=_emit,
+    )
+
+    try:
+        service.start()
+        service.wait()
+    except KeyboardInterrupt:
+        service.stop()
+        click.echo("\nStopping...")
+        _cli_logger.log_data_ingestion("Ingestion service stopped by user.")
 
 
 @ops.group(name="logs", invoke_without_command=True)

@@ -1,9 +1,10 @@
+"""Shim to run the continuous ingestion service via sml.ops.data.serve()."""
+
 import os
 import sys
 
-import sequential_ingestion_engine
+from sml.ops import data
 
-# Variables required by sequential_ingestion_engine (and batch variant).
 _REQUIRED_ENV_VARS = (
     "ZEROBUS_WORKSPACE_URL",
     "ZEROBUS_CLIENT_ID",
@@ -22,6 +23,7 @@ ZEROBUS_TABLE_NAME=<catalog>.<schema>.<table_name>
 ZEROBUS_CLIENT_ID=<service-principal-client-id>
 ZEROBUS_CLIENT_SECRET=<service-principal-client-secret>
 BLE_OUTPUT_DIR=/path/to/your/audio_samples
+NUM_WORKERS=4
 """
 
 
@@ -46,16 +48,24 @@ def _ensure_required_env() -> None:
     sys.exit(1)
 
 
-_ensure_required_env()
+def main() -> None:
+    _ensure_required_env()
 
-# ========================
-# Run the Ingestor
-# ========================
-# Option 1: Standard Ingestion (Processes & uploads one file at a time)
+    try:
+        workers = int(os.getenv("NUM_WORKERS", "4"))
+    except ValueError:
+        print("Error: NUM_WORKERS must be an integer.", file=sys.stderr)
+        sys.exit(1)
 
-# Option 2: High-Volume Simultaneous Ingestion (Processes & uploads multiple files at once)
-# (Uncomment the line below and comment Option 1 to enable parallel uploading)
-# import batch_ingestion_engine as sequential_ingestion_engine
+    data.serve(
+        monitor_dir=os.environ["BLE_OUTPUT_DIR"],
+        volume_path=os.environ["DATABRICKS_VOLUME_PATH"],
+        pattern=os.getenv("INGEST_PATTERN", "*.wav"),
+        workers=workers,
+        commander_path=os.getenv("COMMANDER_PATH"),
+        block=True,
+    )
+
 
 if __name__ == "__main__":
-    sequential_ingestion_engine.main()
+    main()
