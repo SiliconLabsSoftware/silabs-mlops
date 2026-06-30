@@ -37,9 +37,9 @@ Usage:
     >>> data.ingest(sensor_data)
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable
 
-from .ingest import IngestConfig, DataIngestor
+from .ingest import IngestConfig, DataIngestor, IngestionService
 from sml.ops.config import Config
 
 _config: Optional[IngestConfig] = None
@@ -49,6 +49,8 @@ __all__ = [
     "ingest",
     "ingest_from_file",
     "file_ingest",
+    "serve",
+    "IngestionService",
 ]
 
 
@@ -198,3 +200,79 @@ def file_ingest(file_path: str, volume_path: str, metadata: Dict[str, Any]) -> b
 
     ingestor = DataIngestor(_config)
     return ingestor.file_ingest(file_path, volume_path, metadata)
+
+
+def _ingest_config_from_env_or_stored() -> Optional[IngestConfig]:
+    """Build IngestConfig from module state or Config env vars."""
+    if _config is not None:
+        return _config
+
+    if not all(
+        [
+            Config.ZEROBUS_SERVER_ENDPOINT,
+            Config.ZEROBUS_WORKSPACE_URL,
+            Config.ZEROBUS_TABLE_NAME,
+            Config.ZEROBUS_CLIENT_ID,
+            Config.ZEROBUS_CLIENT_SECRET,
+        ]
+    ):
+        return None
+
+    return IngestConfig(
+        server_endpoint=Config.ZEROBUS_SERVER_ENDPOINT,
+        workspace_url=Config.ZEROBUS_WORKSPACE_URL,
+        table_name=Config.ZEROBUS_TABLE_NAME,
+        client_id=Config.ZEROBUS_CLIENT_ID,
+        client_secret=Config.ZEROBUS_CLIENT_SECRET,
+        volume_path=Config.DATABRICKS_VOLUME_PATH,
+    )
+
+
+def serve(
+    monitor_dir: str,
+    volume_path: str,
+    *,
+    pattern: str = "*.wav",
+    workers: int = 4,
+    commander_path: Optional[str] = None,
+    metadata_builder: Optional[Callable] = None,
+    block: bool = True,
+    log: Optional[Callable[[str], None]] = None,
+) -> Optional[IngestionService]:
+    """
+    Start the continuous file-watcher ingestion service.
+
+    Uses credentials from data.config() or environment variables.
+
+    Args:
+        monitor_dir: Local directory to watch for new files
+        volume_path: Databricks Unity Catalog volume base path
+        pattern: Glob pattern for files to ingest (default: '*.wav')
+        workers: Number of parallel uploader threads (default: 4)
+        commander_path: Path to commander-cli for hardware detection
+        metadata_builder: Optional callable(Path) -> dict for custom metadata
+        block: If True, block until Ctrl+C (default: True)
+        log: Optional logging callback
+
+    Returns:
+        IngestionService instance, or None if configuration is missing
+    """
+    config = _ingest_config_from_env_or_stored()
+    if config is None:
+        print("Error: Configuration not set. Call data.config() first or set .env.")
+        return None
+
+    service = IngestionService(
+        config=config,
+        monitor_dir=monitor_dir,
+        volume_path=volume_path,
+        pattern=pattern,
+        workers=workers,
+        commander_path=commander_path,
+        metadata_builder=metadata_builder,
+        log=log,
+    )
+    service.start()
+    if block:
+        service.wait()
+    return service
