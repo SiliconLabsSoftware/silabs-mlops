@@ -13,15 +13,17 @@ run = "trufflehog git file://. --results=verified,unknown"
 
 [tasks.lint]
 description = "Lint using Ruff"
-run = "ruff check"
-
-[tasks.check-format]
-description = "Check formatting using Ruff"
-run = "ruff format --check"
+usage = """
+flag "--fix" help="Fix linting errors"
+"""
+run = "ruff check ${usage_fix:+--fix}"
 
 [tasks.format]
 description = "Format using Ruff"
-run = "ruff format"
+usage = """
+flag "--fix" help="Fix formatting errors"
+"""
+run = '[ "${usage_fix:-false}" = "true" ] && ruff format || ruff format --check'
 
 [tasks.test]
 description = "Run Unit tests using PyTest"
