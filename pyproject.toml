@@ -3,7 +3,18 @@ version = "0.1.2"
 name = "silabs-mlops"
 description = "Silicon Labs MLOps SDK for edge devices and Databricks."
 readme = "README.md"
+license = "LicenseRef-MSLA"
+license-files = ["LICENSE.md"]
 requires-python = ">=3.12"
+authors = [{ name = "Silicon Laboratories" }]
+keywords = ["mlops", "databricks", "edge", "ble", "silicon-labs", "mlflow", "iot"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+]
 dependencies = [
   "bleak",
   "click>=8.3.1",
@@ -13,6 +24,12 @@ dependencies = [
   "pyyaml>=6.0.3",
   "requests>=2.33.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/SiliconLabsSoftware/silabs-mlops"
+Documentation = "https://github.com/SiliconLabsSoftware/silabs-mlops/tree/main/docs"
+Repository = "https://github.com/SiliconLabsSoftware/silabs-mlops"
+Issues = "https://github.com/SiliconLabsSoftware/silabs-mlops/issues"
 
 [dependency-groups]
 dev = ["ruff>=0.15.20", "ty>=0.0.55"]
@@ -26,7 +43,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-exclude = ["tests*", "tests"]
+where = ["."]
+include = ["sml*"]
+exclude = ["tests*"]
 
 [tool.uv]
 managed = true
