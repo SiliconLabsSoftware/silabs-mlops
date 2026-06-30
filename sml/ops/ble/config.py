@@ -31,6 +31,7 @@ class BLEConfig:
         sample_width: int = 2,
         labels: Optional[List[str]] = None,
         buffer_size: int = 32000,
+        scan_timeout: float = 10.0,
     ):
         self.device_name = device_name
         self.device_address = device_address
@@ -42,3 +43,4 @@ class BLEConfig:
         self.sample_width = int(sample_width)
         self.labels = labels or ["on", "off", "unknown"]
         self.buffer_size = int(buffer_size)
+        self.scan_timeout = float(scan_timeout)

@@ -285,6 +285,13 @@ class Logger:
     ):
         self.log_event(type="Deployment", level=level, message=message, source=source)
 
+    def log_data_collection(
+        self, message: str, level: str = "Info", source: str = "BLE Receiver"
+    ):
+        self.log_event(
+            type="Data Collection", level=level, message=message, source=source
+        )
+
     def view(self, event_type: Optional[str] = None):
         try:
             with open(self.local_log_file, "r") as f:

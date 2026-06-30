@@ -152,13 +152,14 @@ class TestBLEReceiver(unittest.TestCase):
         "sml.ops.ble.receiver.BleakScanner.find_device_by_filter",
         new_callable=AsyncMock,
     )
-    @patch("builtins.print")
-    def test_start_not_found(self, mock_print, mock_filter, mock_address):
+    def test_start_not_found(self, mock_filter, mock_address):
         """Test scanner failing to find device."""
+        mock_log = MagicMock()
+        receiver = BLEReceiver(config=self.config, log=mock_log)
         mock_address.return_value = None
         mock_filter.return_value = None
-        self.loop.run_until_complete(self.receiver.start())
-        mock_print.assert_any_call("Could not find device.")
+        self.loop.run_until_complete(receiver.start())
+        mock_log.assert_any_call("Could not find device.")
 
     @patch(
         "sml.ops.ble.receiver.BleakScanner.find_device_by_address",

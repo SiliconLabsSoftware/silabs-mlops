@@ -53,10 +53,10 @@ SERVER_ENDPOINT = os.getenv("ZEROBUS_SERVER_ENDPOINT")
 TABLE_NAME = os.getenv("ZEROBUS_TABLE_NAME")
 VOLUME_PATH = os.getenv("DATABRICKS_VOLUME_PATH")
 
-MONITOR_DIR_PATH = os.getenv("AUDIO_SAMPLES_DIR")
+MONITOR_DIR_PATH = os.getenv("BLE_OUTPUT_DIR")
 if not MONITOR_DIR_PATH:
     raise EnvironmentError(
-        "AUDIO_SAMPLES_DIR is not set. Run via 'python start_ingestion.py' to configure."
+        "BLE_OUTPUT_DIR is not set. Run via 'python start_ingestion.py' to configure."
     )
 MONITOR_DIR = Path(MONITOR_DIR_PATH)
 

@@ -52,6 +52,19 @@ class Config:
     ZEROBUS_CLIENT_ID = os.getenv("ZEROBUS_CLIENT_ID")
     ZEROBUS_CLIENT_SECRET = os.getenv("ZEROBUS_CLIENT_SECRET")
 
+    # BLE configuration
+    BLE_DEVICE_NAME = os.getenv("BLE_DEVICE_NAME")
+    BLE_DEVICE_ADDRESS = os.getenv("BLE_DEVICE_ADDRESS")
+    BLE_OUTPUT_DIR = os.getenv("BLE_OUTPUT_DIR")
+    BLE_VOICE_RESULT_UUID = os.getenv("BLE_VOICE_RESULT_UUID")
+    BLE_AUDIO_DATA_UUID = os.getenv("BLE_AUDIO_DATA_UUID")
+    BLE_LABELS = os.getenv("BLE_LABELS")
+    BLE_SAMPLE_RATE = os.getenv("BLE_SAMPLE_RATE")
+    BLE_CHANNELS = os.getenv("BLE_CHANNELS")
+    BLE_SAMPLE_WIDTH = os.getenv("BLE_SAMPLE_WIDTH")
+    BLE_BUFFER_SIZE = os.getenv("BLE_BUFFER_SIZE")
+    BLE_SCAN_TIMEOUT = os.getenv("BLE_SCAN_TIMEOUT")
+
     @classmethod
     def update(cls, **kwargs):
         """Update configuration values at runtime."""

@@ -11,7 +11,7 @@ _REQUIRED_ENV_VARS = (
     "ZEROBUS_SERVER_ENDPOINT",
     "ZEROBUS_TABLE_NAME",
     "DATABRICKS_VOLUME_PATH",
-    "AUDIO_SAMPLES_DIR",
+    "BLE_OUTPUT_DIR",
 )
 
 _ENV_FILE_EXAMPLE = """# Example .env structure — replace placeholders with your values; do not commit secrets.
@@ -21,7 +21,7 @@ ZEROBUS_WORKSPACE_URL=https://adb-<workspace-id>.<shard>.azuredatabricks.net
 ZEROBUS_TABLE_NAME=<catalog>.<schema>.<table_name>
 ZEROBUS_CLIENT_ID=<service-principal-client-id>
 ZEROBUS_CLIENT_SECRET=<service-principal-client-secret>
-AUDIO_SAMPLES_DIR=/path/to/your/audio_samples
+BLE_OUTPUT_DIR=/path/to/your/audio_samples
 """
 
 
