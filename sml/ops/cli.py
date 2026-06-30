@@ -21,6 +21,7 @@ Silicon Labs MLOps SDK CLI.
 
 import os
 import shutil
+import asyncio
 from pathlib import Path
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -35,6 +36,34 @@ from sml.ops.model.deployer import RPiDeployer
 
 
 _cli_logger = Logger()
+
+_DEFAULT_VOICE_RESULT_UUID = "f7ee5e0c-1882-4c85-a6f1-8d6f81f10902"
+_DEFAULT_AUDIO_DATA_UUID = "f7ee5e0c-1882-4c85-a6f1-8d6f81f10903"
+_DEFAULT_OUTPUT_DIR = "./audio_samples"
+_DEFAULT_LABELS = ["on", "off", "unknown"]
+_DEFAULT_SAMPLE_RATE = 16000
+_DEFAULT_CHANNELS = 1
+_DEFAULT_SAMPLE_WIDTH = 2
+_DEFAULT_BUFFER_SIZE = 32000
+_DEFAULT_SCAN_TIMEOUT = 10.0
+
+
+def _resolve_ble_value(cli_value, config_value, default):
+    if cli_value is not None:
+        return cli_value
+    if config_value is not None:
+        return config_value
+    return default
+
+
+def _resolve_ble_int(cli_value, config_value, default):
+    resolved = _resolve_ble_value(cli_value, config_value, default)
+    return int(resolved) if resolved is not None else default
+
+
+def _resolve_ble_float(cli_value, config_value, default):
+    resolved = _resolve_ble_value(cli_value, config_value, default)
+    return float(resolved) if resolved is not None else default
 
 
 @click.group()
@@ -355,6 +384,157 @@ def deploy(uri, serial, rpi_host, rpi_user, remote_path):
         error_msg = f"Deployment failed: {e}"
         click.echo(f"✗ {error_msg}", err=True)
         _cli_logger.log_model_deployment(error_msg, level="Error")
+        raise click.Abort()
+
+
+@ops.group()
+def ble():
+    """BLE data collection commands."""
+    pass
+
+
+@ble.command(name="receive")
+@click.option(
+    "--device-name",
+    default=None,
+    help="BLE device name (env: BLE_DEVICE_NAME).",
+)
+@click.option(
+    "--device-address",
+    default=None,
+    help="BLE MAC address (env: BLE_DEVICE_ADDRESS).",
+)
+@click.option(
+    "--output-dir",
+    default=None,
+    help="Directory for saved .wav files (env: BLE_OUTPUT_DIR).",
+)
+@click.option(
+    "--voice-result-uuid",
+    default=None,
+    help="GATT UUID for voice detection events (env: BLE_VOICE_RESULT_UUID).",
+)
+@click.option(
+    "--audio-data-uuid",
+    default=None,
+    help="GATT UUID for audio stream (env: BLE_AUDIO_DATA_UUID).",
+)
+@click.option(
+    "--labels",
+    default=None,
+    help="Comma-separated keyword labels (env: BLE_LABELS).",
+)
+@click.option(
+    "--sample-rate",
+    type=int,
+    default=None,
+    help="Audio sample rate in Hz (env: BLE_SAMPLE_RATE).",
+)
+@click.option(
+    "--channels",
+    type=int,
+    default=None,
+    help="Audio channels (env: BLE_CHANNELS).",
+)
+@click.option(
+    "--sample-width",
+    type=int,
+    default=None,
+    help="Bytes per sample (env: BLE_SAMPLE_WIDTH).",
+)
+@click.option(
+    "--buffer-size",
+    type=int,
+    default=None,
+    help="Audio buffer size in bytes (env: BLE_BUFFER_SIZE).",
+)
+@click.option(
+    "--scan-timeout",
+    type=float,
+    default=None,
+    help="BLE scan timeout in seconds (env: BLE_SCAN_TIMEOUT).",
+)
+def receive(
+    device_name,
+    device_address,
+    output_dir,
+    voice_result_uuid,
+    audio_data_uuid,
+    labels,
+    sample_rate,
+    channels,
+    sample_width,
+    buffer_size,
+    scan_timeout,
+):
+    """Connect to a BLE device and save keyword-triggered audio samples."""
+    from sml.ops.ble import config as ble_config, BLEReceiver
+
+    resolved_labels = _resolve_ble_value(labels, Config.BLE_LABELS, None)
+    if isinstance(resolved_labels, str):
+        label_list = [label.strip() for label in resolved_labels.split(",") if label.strip()]
+    elif resolved_labels is None:
+        label_list = _DEFAULT_LABELS
+    else:
+        label_list = resolved_labels
+
+    resolved_config = {
+        "device_name": _resolve_ble_value(
+            device_name, Config.BLE_DEVICE_NAME, ""
+        ),
+        "device_address": _resolve_ble_value(
+            device_address, Config.BLE_DEVICE_ADDRESS, ""
+        ),
+        "voice_result_uuid": _resolve_ble_value(
+            voice_result_uuid,
+            Config.BLE_VOICE_RESULT_UUID,
+            _DEFAULT_VOICE_RESULT_UUID,
+        ),
+        "audio_data_uuid": _resolve_ble_value(
+            audio_data_uuid,
+            Config.BLE_AUDIO_DATA_UUID,
+            _DEFAULT_AUDIO_DATA_UUID,
+        ),
+        "output_dir": _resolve_ble_value(
+            output_dir, Config.BLE_OUTPUT_DIR, _DEFAULT_OUTPUT_DIR
+        ),
+        "sample_rate": _resolve_ble_int(
+            sample_rate, Config.BLE_SAMPLE_RATE, _DEFAULT_SAMPLE_RATE
+        ),
+        "channels": _resolve_ble_int(
+            channels, Config.BLE_CHANNELS, _DEFAULT_CHANNELS
+        ),
+        "sample_width": _resolve_ble_int(
+            sample_width, Config.BLE_SAMPLE_WIDTH, _DEFAULT_SAMPLE_WIDTH
+        ),
+        "buffer_size": _resolve_ble_int(
+            buffer_size, Config.BLE_BUFFER_SIZE, _DEFAULT_BUFFER_SIZE
+        ),
+        "scan_timeout": _resolve_ble_float(
+            scan_timeout, Config.BLE_SCAN_TIMEOUT, _DEFAULT_SCAN_TIMEOUT
+        ),
+        "labels": label_list,
+    }
+
+    ble_config(**resolved_config)
+
+    def _emit(message: str):
+        click.echo(message)
+        _cli_logger.log_data_collection(message)
+
+    receiver = BLEReceiver(log=_emit)
+
+    try:
+        asyncio.run(receiver.start())
+    except KeyboardInterrupt:
+        receiver.stop()
+        click.echo("\nStopping...")
+        _cli_logger.log_data_collection("BLE receive stopped by user.")
+    except Exception as e:
+        click.echo(f"[FAIL] BLE receive failed: {e}", err=True)
+        _cli_logger.log_data_collection(
+            f"BLE receive failed: {e}", level="Error"
+        )
         raise click.Abort()
 
 

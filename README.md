@@ -16,7 +16,7 @@ The Silicon Labs MLOps SDK is a professional toolset designed to seamlessly brid
   - `ble.config()`: Global configuration for UUIDs, sample rates, and labels.
   - `ble.BLEReceiver()`: Main class for managing device connection and data capture.
 - **Single global configuration** — Call `data.config()` once; data ingestion, profiling, and logging share the same Databricks and ZeroBus credentials.
-- **CLI** — The `sml` entry point supports workflows such as remote deployment (see the deployment guide).
+- **CLI** — The `sml` entry point supports workflows such as `sml ops ble receive` (BLE audio collection), remote deployment, and data ingestion (see the guides below).
 - **Cloud integration** — Unity Catalog volumes, MLflow, and related Databricks patterns as described in the guides below.
 
 ## Key Design Principles
@@ -86,13 +86,18 @@ The Silicon Labs MLOps SDK is a professional toolset designed to seamlessly brid
   ZEROBUS_CLIENT_ID="<service-principal-client-id>"
   ZEROBUS_CLIENT_SECRET="<service-principal-client-secret>"
 
-  # BLE app configuration
+  # BLE configuration
   BLE_DEVICE_NAME="<BLE App Name>"
   BLE_DEVICE_ADDRESS="xx:xx:xx:xx:xx:xx"
-  BLE_RESULT_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-  BLE_DATA_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  BLE_VOICE_RESULT_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  BLE_AUDIO_DATA_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
   BLE_LABELS="<keyword1>,<keyword2>,unknown"
-  AUDIO_SAMPLES_DIR="/path/to/your/audio_samples"
+  BLE_OUTPUT_DIR="/path/to/your/audio_samples"
+  BLE_SAMPLE_RATE="16000"
+  BLE_CHANNELS="1"
+  BLE_SAMPLE_WIDTH="2"
+  BLE_BUFFER_SIZE="32000"
+  BLE_SCAN_TIMEOUT="10.0"
   ```
 
 ## Installation
@@ -134,6 +139,7 @@ After installation, you can verify it by running:
 
 ```bash
 sml ops --help
+sml ops ble receive --help
 ```
 
 For more information about remote deployment and environment, see [Raspberry Pi Deployment Guide](docs/deployment_guide.md).
