@@ -1,0 +1,46 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/silabs-mlops/
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
+
+      - name: Validate release is stable
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            echo "GitHub pre-releases are not published to PyPI."
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          if echo "$VERSION" | grep -Eq '(^|[.-])[ab]([0-9]|$)|(^|[.-])rc[0-9]'; then
+            echo "Pre-release versions (a/b/rc) are not published to PyPI: $VERSION"
+            exit 1
+          fi
+          PYPROJECT_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [ "$VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "Tag version ($VERSION) does not match pyproject.toml ($PYPROJECT_VERSION)."
+            exit 1
+          fi
+
+      - name: Publish to PyPI
+        run: mise run publish
