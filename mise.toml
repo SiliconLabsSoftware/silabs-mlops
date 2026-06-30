@@ -43,12 +43,11 @@ run = "uv build --wheel --clear"
 [tasks.publish]
 description = "Build and publish package wheel to production PyPI"
 depends = ["build-package"]
+usage = """
+arg <index> help="The target index"
+"""
 run = """
 VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-WHEEL=$(find dist -maxdepth 1 -name "*-${VERSION}-*.whl" -print)
-if [ "$(printf '%s\n' "$WHEEL" | sed '/^$/d' | wc -l)" -ne 1 ]; then
-  echo "Expected exactly one wheel for version ${VERSION}, found: ${WHEEL:-none}"
-  exit 1
-fi
-uv publish --index pypi "$WHEEL"
+WHEEL=$(find dist -maxdepth 1 -name "*-${VERSION}-*.whl" -print | head -n 1)
+uv publish --index "$usage_index" "$WHEEL"
 """
