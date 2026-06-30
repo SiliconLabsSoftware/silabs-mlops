@@ -38,9 +38,17 @@ pyinstaller --onefile --name sml "sml/ops/cli.py"
 
 [tasks.build-package]
 description = "Build package wheel"
-run = "uv build"
+run = "uv build --wheel --clear"
 
 [tasks.publish]
-description = "Build and publish package to production PyPI"
+description = "Build and publish package wheel to production PyPI"
 depends = ["build-package"]
-run = "uv publish --index pypi"
+run = """
+VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+WHEEL=$(find dist -maxdepth 1 -name "*-${VERSION}-*.whl" -print)
+if [ "$(printf '%s\n' "$WHEEL" | sed '/^$/d' | wc -l)" -ne 1 ]; then
+  echo "Expected exactly one wheel for version ${VERSION}, found: ${WHEEL:-none}"
+  exit 1
+fi
+uv publish --index pypi "$WHEEL"
+"""
