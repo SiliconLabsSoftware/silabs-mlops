@@ -26,3 +26,14 @@ run = "ruff format"
 [tasks.test]
 description = "Run Unit tests using PyTest"
 run = "uv run --frozen --group test pytest"
+
+[tasks.build-exec]
+description = "Build executable"
+run = """
+uv pip install pyinstaller
+pyinstaller --onefile --name sml "sml/ops/cli.py"
+"""
+
+[tasks.build-package]
+description = "Build package wheel"
+run = "uv build"
