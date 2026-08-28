@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 import sys
 import pytest
 
+from sml.ops.config import USER_AGENT
 from sml.ops.data.ingest.config import IngestConfig
 from sml.ops.data.ingest.zerobus_client import ZerobusIngestClient
 
@@ -49,6 +50,12 @@ def test_zerobus_client_connect_success():
         client = ZerobusIngestClient("server", "workspace", "table", "id", "secret")
         client.connect()
 
+        # Partner User-Agent must be passed for Zerobus telemetry attribution
+        mock_sdk_class.assert_called_once_with(
+            "server",
+            "workspace",
+            application_name=USER_AGENT,
+        )
         # Verify stream is created correctly
         mock_sdk_instance.create_stream.assert_called_once()
         assert client._stream == mock_stream

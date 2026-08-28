@@ -33,6 +33,7 @@ try:
 except ImportError:
     ZEROBUS_AVAILABLE = False
 
+from sml.ops.config import USER_AGENT
 from sml.ops.logs import Logger
 
 
@@ -67,7 +68,13 @@ class ZerobusIngestClient:
 
     def connect(self) -> None:
         """Initialize ZeroBus stream connection."""
-        self._sdk = ZerobusSdk(self.server_endpoint, self.workspace_url)
+        # application_name sets partner User-Agent attribution on Zerobus gRPC
+        # (PWAF telemetry; requires databricks-zerobus-ingest-sdk >= 1.4).
+        self._sdk = ZerobusSdk(
+            self.server_endpoint,
+            self.workspace_url,
+            application_name=USER_AGENT,
+        )
 
         table_properties = TableProperties(self.table_name)
         options = StreamConfigurationOptions(
