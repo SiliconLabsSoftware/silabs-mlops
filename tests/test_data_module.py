@@ -3,6 +3,7 @@ import requests
 from unittest.mock import patch, MagicMock, mock_open
 
 
+from sml.ops.config import USER_AGENT
 from sml.ops.data.ingest.config import IngestConfig
 from sml.ops.data.ingest import ingestor as ingestor_mod
 from sml.ops.data.ingest.ingestor import DataIngestor
@@ -67,6 +68,11 @@ class TestZerobusIngestClient(unittest.TestCase):
         inst = MagicMock()
         zerobus_mod.ZerobusSdk.return_value = inst
         self.client.connect()
+        zerobus_mod.ZerobusSdk.assert_called_once_with(
+            "e",
+            "u",
+            application_name=USER_AGENT,
+        )
         inst.create_stream.assert_called_once()
 
     @patch.object(zerobus_mod, "ZerobusSdk", create=True)
