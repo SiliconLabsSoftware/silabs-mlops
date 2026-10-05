@@ -79,7 +79,7 @@ from sml.ops import model
 
 result = model.profile(
     model_path="my_model.tflite",
-    profiler_path="C:/path/to/mvp_profiler.exe" # Manual path to the tool on Windows
+    profiler_path="C:/path/to/mvp_profiler.exe",  # Manual path to the tool on Windows
     # profiler_path="/path/to/mvp_profiler" # Manual path to the tool on Linux
 )
 ```
@@ -95,6 +95,7 @@ Before profiling, ensure your **Global Configuration** is set. If you have alrea
 ```python
 import os
 from sml.ops import data
+
 # Call this ONLY if you have NOT already configured the global credentials.
 # If you already called data.config() earlier (e.g., during data ingestion), you DO NOT need to call it again before profiling.
 data.config(
@@ -102,7 +103,7 @@ data.config(
     workspace_url=os.getenv("ZEROBUS_WORKSPACE_URL"),
     table_name=os.getenv("ZEROBUS_TABLE_NAME"),
     client_id=os.getenv("ZEROBUS_CLIENT_ID"),
-    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET")
+    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET"),
 )
 ```
 
@@ -114,9 +115,9 @@ from sml.ops import data
 data.config(
     server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
     workspace_url="https://your-workspace.cloud.databricks.com",
-    table_name="catalog.schema.some_temp_table",   # Required globally (ignored by profiler)
+    table_name="catalog.schema.some_temp_table",  # Required globally (ignored by profiler)
     client_id="your-service-principal-id",
-    client_secret="your-service-principal-secret"
+    client_secret="your-service-principal-secret",
 )
 ```
 
@@ -162,11 +163,12 @@ You can automatically upload all profiling results to a Databricks Volume by pro
 
 ```python
 from sml.ops import model
+
 try:
     result = model.profile(
         model_path=model_path,
-        use_simulator=True,     # runs locally on PC
-        volume_path="/Volumes/my_catalog/my_schema/profiling_results" #-> add your volume path here
+        use_simulator=True,  # runs locally on PC
+        volume_path="/Volumes/my_catalog/my_schema/profiling_results",  # -> add your volume path here
     )
     # The result object contains all the extracted data:
     print(f"  ✓ Model:         {result.model_name}")
@@ -193,11 +195,11 @@ from sml.ops import model
 
 result = model.profile(
     model_path="my_model.tflite",
-    device_id="123456789",          # Specific J-Link serial
-    accelerator="mvpv1",            # Hardware target
-    platform="brd2605",             # Specific platform board
-    weights_paging=True,            # Enable paging
-    timeout=1200                    # Wait up to 20 minutes
+    device_id="123456789",  # Specific J-Link serial
+    accelerator="mvpv1",  # Hardware target
+    platform="brd2605",  # Specific platform board
+    weights_paging=True,  # Enable paging
+    timeout=1200,  # Wait up to 20 minutes
 )
 ```
 

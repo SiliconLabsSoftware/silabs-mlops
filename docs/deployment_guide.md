@@ -99,8 +99,16 @@ To allow flashing over USB without root privileges:
 
 ## 3. Execution
 
-### Via CLI
-Run the following command from your terminal:
+### Local (no Raspberry Pi)
+With the board USB-attached to your workstation and Commander installed (`sml install --tool commander`):
+
+```bash
+sml ops deploy --uri ./model_path.s37
+```
+
+Commander is located automatically on this machine (PATH, then `~/.sml/bin`, then Desktop).
+
+### Via Raspberry Pi
 ```bash
 sml ops deploy \
   --uri ./model_path.s37 \

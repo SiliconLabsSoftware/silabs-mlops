@@ -20,15 +20,15 @@ Downloads and installs the Silicon Labs Simplicity Commander (commander-cli) bin
 """
 
 import os
+import platform
 import shutil
 import stat
-import platform
 import subprocess
 import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import List, Optional
+from typing import ClassVar
 
 import requests
 
@@ -43,14 +43,14 @@ class CommanderInstaller:
     """
 
     _DOWNLOAD_BASE = "https://www.silabs.com/documents/public/software"
-    _ZIP_BY_OS = {
+    _ZIP_BY_OS: ClassVar[dict[str, str]] = {
         "windows": "SimplicityCommander-Windows.zip",
         "darwin": "SimplicityCommander-Mac.zip",
         "linux": "SimplicityCommander-Linux.zip",
     }
 
     # Architecture tokens as they appear inside the nested archive names.
-    _ARCH_TOKENS = {
+    _ARCH_TOKENS: ClassVar[dict[str, list[str]]] = {
         "x86_64": ["x86_64", "amd64"],
         "amd64": ["x86_64", "amd64"],
         "aarch64": ["arm64", "aarch64"],
@@ -60,7 +60,7 @@ class CommanderInstaller:
     }
 
     # Candidate binary names, in install preference order (commander-cli first).
-    _BIN_CANDIDATES = [
+    _BIN_CANDIDATES: ClassVar[list[str]] = [
         "commander-cli",
         "commander-cli.exe",
         "commander",
@@ -74,7 +74,7 @@ class CommanderInstaller:
 
     def install_commander(
         self,
-        dest: Optional[str] = None,
+        dest: str | None = None,
         force: bool = False,
         timeout: int = 600,
     ) -> str:
@@ -187,6 +187,7 @@ class CommanderInstaller:
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,
         )
         if expand.returncode == 0 and expand.stdout.strip():
             remote_pkg_dir = expand.stdout.strip()
@@ -197,6 +198,7 @@ class CommanderInstaller:
                 capture_output=True,
                 text=True,
                 timeout=30,
+                check=False,
             )
             if "exists" in check.stdout:
                 raise FileExistsError(
@@ -210,6 +212,7 @@ class CommanderInstaller:
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,
         )
         remote_machine = arch_result.stdout.strip().lower()
         arch_tokens = self._ARCH_TOKENS.get(remote_machine, [remote_machine])
@@ -257,6 +260,7 @@ class CommanderInstaller:
                 subprocess.run(
                     ["ssh", ssh_target, f"rm -rf {remote_pkg_dir}"],
                     timeout=30,
+                    check=False,
                 )
             subprocess.run(
                 ["ssh", ssh_target, f"mkdir -p $(dirname {remote_pkg_dir})"],
@@ -270,6 +274,7 @@ class CommanderInstaller:
                 capture_output=True,
                 text=True,
                 timeout=300,
+                check=False,
             )
             if result.returncode != 0:
                 raise RuntimeError(f"SCP to {rpi_host} failed:\n{result.stderr}")
@@ -297,7 +302,7 @@ class CommanderInstaller:
                     if chunk:
                         f.write(chunk)
 
-    def _arch_tokens(self) -> List[str]:
+    def _arch_tokens(self) -> list[str]:
         """Return candidate architecture tokens for the current machine."""
         machine = platform.machine().lower()
         return self._ARCH_TOKENS.get(machine, [machine])
@@ -306,7 +311,7 @@ class CommanderInstaller:
         self,
         search_root: Path,
         stage: Path,
-        arch_tokens: Optional[List[str]] = None,
+        arch_tokens: list[str] | None = None,
     ) -> bool:
         """
         Extract the best-matching commander-cli archive nested in the outer zip
@@ -331,15 +336,15 @@ class CommanderInstaller:
                     child.unlink()
         return False
 
-    def _find_nested_archives(self, root: Path) -> List[Path]:
+    def _find_nested_archives(self, root: Path) -> list[Path]:
         """Return nested archive files (.zip and .tar.bz/.tar.bz2) found under ``root``."""
-        archives: List[Path] = []
+        archives: list[Path] = []
         for pattern in ("*.zip", "*.tar.bz", "*.tar.bz2"):
             archives.extend(root.rglob(pattern))
         return archives
 
     def _score_archive(
-        self, archive: Path, arch_tokens: Optional[List[str]] = None
+        self, archive: Path, arch_tokens: list[str] | None = None
     ) -> int:
         """Score a nested archive; a higher score means a better commander-cli candidate.
 
@@ -406,7 +411,7 @@ class CommanderInstaller:
                 mode = os.stat(f).st_mode
                 os.chmod(f, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-    def _locate_binary(self, root: Path) -> Optional[Path]:
+    def _locate_binary(self, root: Path) -> Path | None:
         """Find the commander binary, preferring commander-cli over the GUI build."""
         for candidate in self._BIN_CANDIDATES:
             for p in root.rglob(candidate):

@@ -1,15 +1,15 @@
 # Quick start
 
-This guide helps you get the Silicon Labs MLOps SDK running end-to-end with the minimum required steps, from Bluetooth-based data collection and high-throughput ingestion to edge model deployment via Raspberry Pi.
+This guide helps you get the Silicon Labs MLOps SDK running end-to-end with the minimum required steps, from Bluetooth-based data collection and high-throughput ingestion to edge model deployment.
 
 ## Prerequisites
 Before starting, ensure you have:
 
 **Edge & Hardware**
-- Silicon Labs device connected (e.g., EFR32, xG24) to a **Raspberry Pi** via USB
-- Silicon Labs Simplicity Commander installed on the Raspberry Pi
+- Silicon Labs device connected (e.g., EFR32, xG24) via USB to your workstation, or to a Raspberry Pi
+- Silicon Labs Simplicity Commander installed locally (`sml install --tool commander`) or on the Pi
 - Python 3.9+ installed on your local workstation
-- Passwordless SSH configured between your workstation and the Raspberry Pi (see [rpi_deployment_guide.md](rpi_deployment_guide.md))
+- For remote Pi deploy: passwordless SSH to the Pi (see [deployment_guide.md](deployment_guide.md))
 
 **Cloud / Platform**
 - Databricks workspace
@@ -76,7 +76,7 @@ data.config(
     workspace_url=os.getenv("ZEROBUS_WORKSPACE_URL"),
     table_name=os.getenv("ZEROBUS_TABLE_NAME"),
     client_id=os.getenv("ZEROBUS_CLIENT_ID"),
-    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET")
+    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET"),
 )
 ```
 
@@ -89,7 +89,7 @@ data.config(
     workspace_url="https://your-workspace.databricks.com",
     table_name="catalog.schema.sensor_table",
     client_id="your-id",
-    client_secret="your-secret"
+    client_secret="your-secret",
 )
 ```
 
@@ -113,14 +113,14 @@ from sml.ops import ble
 ble.config(
     device_name="MySilabsBoard",
     device_address="AA:BB:CC:DD:EE:FF",
-    voice_result_uuid="00002A37-0000-1000-8000-00805F9B34FB", # Example UUID
+    voice_result_uuid="00002A37-0000-1000-8000-00805F9B34FB",  # Example UUID
     audio_data_uuid="00002A38-0000-1000-8000-00805F9B34FB",  # Example UUID
     output_dir="./captured_audio",
     sample_rate=16000,
     channels=1,
     sample_width=2,
     labels=["on", "off", "unknown"],
-    buffer_size=32000
+    buffer_size=32000,
 )
 ```
 For more information, refer to the [ble_module_guide.md](ble_module_guide.md).
@@ -137,13 +137,14 @@ Configure your Databricks credentials (once at startup either by fetching your s
 
 ```python
 from sml.ops import data
-# Provided credentials directly 
+
+# Provided credentials directly
 data.config(
     server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
     workspace_url="https://your-workspace.cloud.databricks.com",
     table_name="catalog.schema.sensor_table",
     client_id="your-service-principal-id",
-    client_secret="your-service-principal-secret"
+    client_secret="your-service-principal-secret",
 )
 ```
 
@@ -155,7 +156,7 @@ from sml.ops import data
 
 records = [
     {"device_id": "sensor-01", "temp": 24.5, "unit": "C"},
-    {"device_id": "sensor-02", "temp": 22.1, "unit": "C"}
+    {"device_id": "sensor-02", "temp": 22.1, "unit": "C"},
 ]
 
 # This automatically connects, ingests, and logs the results
@@ -174,33 +175,35 @@ data.config(
     workspace_url="https://your-workspace.cloud.databricks.com",
     table_name="your_catalog.your_schema.iot_data",
     client_id="your-client-id",
-    client_secret="your-client-secret"
+    client_secret="your-client-secret",
 )
+
 
 def collect_sensor_readings():
     """Placeholder for your own sensor collection logic"""
     return [
         {"device_id": "temp-sensor-1", "temperature": 22.5, "timestamp": time.time()},
-        {"device_id": "humidity-sensor-1", "humidity": 55, "timestamp": time.time()}
+        {"device_id": "humidity-sensor-1", "humidity": 55, "timestamp": time.time()},
     ]
+
 
 # Continuous collection loop
 while True:
     print("\n--- Collecting New Readings ---")
-    
+
     # 1. Collect data from sensors
     readings = collect_sensor_readings()
-    
+
     # 2. Send to Databricks (Connects, Sends, and Disconnects automatically)
     success = data.ingest(readings)
-    
+
     if success:
         print("✓ Batch sent to Databricks!")
     else:
         print("✗ Batch failed")
-    
+
     # 3. Wait before the next collection interval
-    time.sleep(2) 
+    time.sleep(2)
 ```
 
 **What happens:**
@@ -220,22 +223,22 @@ data.config(
     workspace_url="https://your-workspace.cloud.databricks.com",
     table_name="catalog.schema.audio_events",
     client_id="your-service-principal-id",
-    client_secret="your-service-principal-secret"
+    client_secret="your-service-principal-secret",
 )
 
 # 2. Provide metadata for the file
 metadata = {
-    "device_id":   "silabs-xg24-01",
+    "device_id": "silabs-xg24-01",
     "class_label": "keyword_detected",
-    "sample_rate": 16000
+    "sample_rate": 16000,
 }
 
 # 2. Upload file + ingest metadata
 # Note: file_path and ingest_ts are added automatically by the SDK to the metadata dictionary, so you must create the table with schema that includes these 2 fields also in Databricks.
 success = data.file_ingest(
-    file_path="local_sample.wav",                             # Path to your local file
+    file_path="local_sample.wav",  # Path to your local file
     volume_path="/Volumes/main/default/audio/sample_01.wav",  # Provide the full path in Databricks Volume to store the file
-    metadata=metadata                                          # Dictionary of attributes
+    metadata=metadata,  # Dictionary of attributes
 )
 
 if success:
@@ -256,39 +259,47 @@ You can automatically upload all profiling results to a Databricks Volume by pro
 from sml.ops import model
 
 result = model.profile(
-    model_path="models/my_model.tflite", #-> add your model path here
-    volume_path="/Volumes/main/default/profiling_results", #-> add your volume path here
-    use_simulator=True
+    model_path="models/my_model.tflite",  # -> add your model path here
+    volume_path="/Volumes/main/default/profiling_results",  # -> add your volume path here
+    use_simulator=True,
 )
 # result.output_dir is a dynamic path that always points to where your results are stored
-# result.output_dir will now point to the remote Databricks URL path (e.g., /Volumes/main/default/...). 
+# result.output_dir will now point to the remote Databricks URL path (e.g., /Volumes/main/default/...).
 print(f"Remote Results: {result.output_dir}")
 ```
 
 
-## Step 3: Deploy to edge devices via Raspberry Pi
+## Step 3: Deploy to edge devices
 
-Upload the firmware/model to a remote Raspberry Pi and flash it to the physical device.
+Flash firmware/model to a USB-attached Silicon Labs board from your workstation:
 
 ```python
 from sml.ops.model.deployer import RPiDeployer
 
+deployer = RPiDeployer(local_file_path="./my_model.s37")
+deployer.deploy()
+```
+
+Or via a remote Raspberry Pi:
+
+```python
 deployer = RPiDeployer(
     rpi_host="host_ip",
     rpi_user="user_name",
     local_file_path="./my_model.s37",
-    commander_path="/home/aimlraspberry/Desktop/SimplicityCommander-Linux/commander-cli/commander-cli"#(example)
 )
-
 deployer.deploy()
 ```
 
-**What happens:**
+**What happens (local):**
+- Locates Simplicity Commander on this machine
+- Auto-detects the J-Link serial and target chip
+- Flashes the local firmware file to the device
+
+**What happens (remote):**
 - Connects to the Raspberry Pi over SSH
 - SCPs the local firmware file to the Pi's `/tmp` directory
-- Remote invokes Simplicity Commander on the Pi
-- Auto-detects the J-Link serial and target chip
-- Flashes the payload directly to the device memory
+- Invokes Simplicity Commander on the Pi and flashes the device
 
 ## Step 4: Monitoring via Logs
 
@@ -330,6 +341,9 @@ silabs-mlops ingest --file sensor_data.json
 # 2. Profile model performance (Optional)
 silabs-mlops profile --model ./my_model.tflite --accelerator mvpv1
 
-# 3. Deploy firmware to device via Raspberry Pi
-silabs-mlops model deploy --uri ./my_model.s37 --rpi-host <RPI_IP_ADDRESS> --rpi-user <RPI_USERNAME>
+# 3. Deploy firmware to a locally attached device
+sml ops deploy --uri ./my_model.s37
+
+# Or deploy via Raspberry Pi
+sml ops deploy --uri ./my_model.s37 --rpi-host <RPI_IP_ADDRESS> --rpi-user <RPI_USERNAME>
 ```

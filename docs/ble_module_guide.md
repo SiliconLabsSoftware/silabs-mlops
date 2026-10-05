@@ -86,11 +86,19 @@ ble.config(
     voice_result_uuid=os.getenv("BLE_VOICE_RESULT_UUID"),
     audio_data_uuid=os.getenv("BLE_AUDIO_DATA_UUID"),
     output_dir=os.getenv("BLE_OUTPUT_DIR"),
-    sample_rate=os.getenv("BLE_SAMPLE_RATE", 16000),  # <- (optional) replace these values with your own values
-    channels=os.getenv("BLE_CHANNELS", 1),              # <- (optional) replace these values with your own values
-    sample_width=os.getenv("BLE_SAMPLE_WIDTH", 2),      # <- (optional) replace these values with your own values
+    sample_rate=os.getenv(
+        "BLE_SAMPLE_RATE", 16000
+    ),  # <- (optional) replace these values with your own values
+    channels=os.getenv(
+        "BLE_CHANNELS", 1
+    ),  # <- (optional) replace these values with your own values
+    sample_width=os.getenv(
+        "BLE_SAMPLE_WIDTH", 2
+    ),  # <- (optional) replace these values with your own values
     labels=os.getenv("BLE_LABELS", "on,off,unknown").split(","),
-    buffer_size=os.getenv("BLE_BUFFER_SIZE", 32000)     # <- (optional) replace these values with your own values
+    buffer_size=os.getenv(
+        "BLE_BUFFER_SIZE", 32000
+    ),  # <- (optional) replace these values with your own values
 )
 ```
 
@@ -107,10 +115,10 @@ ble.config(
     voice_result_uuid="<YOUR_VOICE_RESULT_UUID>",
     audio_data_uuid="<YOUR_AUDIO_DATA_UUID>",
     output_dir="<YOUR_LOCAL_PATH>",
-    sample_rate=16000,     # Optional: change to match your firmware
-    channels=1,            # Optional: 1 = Mono (default)
-    sample_width=2,        # Optional: 2 = 16-bit (default)
-    labels=["on", "off", "unknown"]
+    sample_rate=16000,  # Optional: change to match your firmware
+    channels=1,  # Optional: 1 = Mono (default)
+    sample_width=2,  # Optional: 2 = 16-bit (default)
+    labels=["on", "off", "unknown"],
 )
 ```
 
@@ -159,6 +167,7 @@ Once `ble.config()` is called, the `BLEReceiver` class handles all Bluetooth com
 import asyncio
 from sml.ops import ble
 
+
 async def main():
     ble.config(
         device_name="<YOUR_DEVICE_NAME>",
@@ -167,12 +176,13 @@ async def main():
         audio_data_uuid="<YOUR_AUDIO_DATA_UUID>",
         output_dir="<YOUR_LOCAL_PATH>",
         sample_rate=16000,
-        labels=["on", "off", "unknown"]
+        labels=["on", "off", "unknown"],
     )
 
     # BLEReceiver automatically uses the global config above
     receiver = ble.BLEReceiver()
     await receiver.start()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

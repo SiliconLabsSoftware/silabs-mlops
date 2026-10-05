@@ -15,12 +15,11 @@
 # By installing, copying or otherwise using this software, you agree to the
 # terms of the MSLA.
 
-from typing import Optional, List
 from .config import BLEConfig
 from .receiver import BLEReceiver
 
 # Module-level configuration storage
-_config: Optional[BLEConfig] = None
+_config: BLEConfig | None = None
 
 
 def config(
@@ -32,7 +31,7 @@ def config(
     sample_rate: int = 16000,
     channels: int = 1,
     sample_width: int = 2,
-    labels: Optional[List[str]] = None,
+    labels: list[str] | None = None,
     buffer_size: int = 32000,
     scan_timeout: float = 10.0,
 ) -> BLEConfig:

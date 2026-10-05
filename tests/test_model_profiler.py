@@ -1,16 +1,16 @@
-import unittest
-from unittest.mock import patch, mock_open, MagicMock
-from pathlib import Path
 import subprocess
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, mock_open, patch
 
+from sml.ops.config import USER_AGENT, Config
 from sml.ops.model.profiler import NPUProfiler, ProfileResult
-from sml.ops.config import Config, USER_AGENT
 
 
 class TestNPUProfiler(unittest.TestCase):
     def setUp(self):
-        # Patch the Logger to avoid filesystem side effects in tests
-        self.patcher = patch("sml.ops.logs.Logger")
+        # Patch the Logger where NPUProfiler looks it up (imported into profiler module)
+        self.patcher = patch("sml.ops.model.profiler.Logger")
         self.mock_logger_class = self.patcher.start()
         self.profiler = NPUProfiler()
 
@@ -271,7 +271,7 @@ Total adapter count: 1
         self.profiler.profile(model_path="test.tflite", use_simulator=True)
 
         # Verify `--device` wasn't in the arguments
-        args, kwargs = mock_popen.call_args
+        args, _ = mock_popen.call_args
         cmd_list = args[0]
         self.assertNotIn("--device", cmd_list)
 
@@ -361,9 +361,9 @@ Total adapter count: 1
         with (
             patch("pathlib.Path.mkdir"),
             patch("pathlib.Path.exists", return_value=True),
+            self.assertRaises(FileExistsError),
         ):
-            with self.assertRaises(FileExistsError):
-                self.profiler.install_profiler(force=False)
+            self.profiler.install_profiler(force=False)
         mock_get.assert_not_called()
 
 

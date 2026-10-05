@@ -1,14 +1,13 @@
+import argparse
+import difflib
+import json
 import os
 import re
-import json
-import argparse
 import shutil
-from typing import Optional, Tuple
 
-import soundfile as sf
-from vosk import Model, KaldiRecognizer
 import numpy as np
-import difflib
+import soundfile as sf
+from vosk import KaldiRecognizer, Model
 
 # --------------------------
 # Config
@@ -121,14 +120,14 @@ def extract_id_from_filename(fname: str) -> str:
     return digits if digits else "0"
 
 
-def make_target_path(src_path: str, label: str, out_dir: Optional[str] = None) -> str:
+def make_target_path(src_path: str, label: str, out_dir: str | None = None) -> str:
     file_id = extract_id_from_filename(src_path)
     target_dir = out_dir if out_dir else os.path.dirname(src_path)
     return os.path.join(target_dir, f"{label}_{file_id}.wav")
 
 
 def copy_labeled(
-    src_path: str, label: str, out_dir: Optional[str] = None, dry_run: bool = False
+    src_path: str, label: str, out_dir: str | None = None, dry_run: bool = False
 ):
     """
     Create a renamed COPY in the output folder (keep original in inbox).
@@ -162,10 +161,10 @@ def copy_labeled(
 # --------------------------
 def load_audio_int16(
     file_path: str, target_sr: int = 16000
-) -> Tuple[Optional[np.ndarray], Optional[int], Optional[float]]:
+) -> tuple[np.ndarray | None, int | None, float | None]:
     try:
         audio, sr = sf.read(file_path, dtype="int16", always_2d=True)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"[ERROR] Cannot read {file_path}: {e}")
         return None, None, None
 
@@ -213,7 +212,7 @@ class OnOffVosk:
                             # partial evidence, bias 'on' slightly
                             base_conf = 0.53 if nt == "on" else 0.50
                             partial_words.append({"word": nt, "conf": base_conf})
-            except Exception:
+            except Exception:  # noqa: S110, BLE001
                 pass
 
         fdata = json.loads(rec.FinalResult() or "{}")
@@ -223,7 +222,7 @@ class OnOffVosk:
             for w in fdata["result"]:
                 final_words.append(
                     {
-                        "word": normalize_token((w.get("word") or "")),
+                        "word": normalize_token(w.get("word") or ""),
                         "conf": float(w.get("conf") or 0.0),
                     }
                 )
@@ -349,7 +348,7 @@ class OnOffVosk:
 # Core processing
 # --------------------------
 def process_one_file(
-    wav_path: str, classifier: OnOffVosk, out_dir: Optional[str], dry_run: bool
+    wav_path: str, classifier: OnOffVosk, out_dir: str | None, dry_run: bool
 ):
     base = os.path.basename(wav_path)
     if not re.match(r"unknown_.*\.wav$", base, flags=re.IGNORECASE):
@@ -367,7 +366,7 @@ def process_one_file(
 
 
 def process_batch(
-    inbox: str, classifier: OnOffVosk, out_dir: Optional[str], dry_run: bool
+    inbox: str, classifier: OnOffVosk, out_dir: str | None, dry_run: bool
 ):
     files = [
         os.path.join(inbox, f)
@@ -380,7 +379,7 @@ def process_batch(
     for f in sorted(files):
         try:
             process_one_file(f, classifier, out_dir, dry_run)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"[ERROR] {os.path.basename(f)}: {e}")
 
 

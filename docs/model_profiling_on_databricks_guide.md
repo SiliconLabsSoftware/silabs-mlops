@@ -134,9 +134,7 @@ Update these with your specific Databricks and ZeroBus details:
 
 ```python
 teacher_v = register_single_file(
-    "<path>/model.teacher.h5",
-    "<catalog>.<schema>.model_teacher",
-    "teacher_register"
+    "<path>/model.teacher.h5", "<catalog>.<schema>.model_teacher", "teacher_register"
 )
 ```
 
@@ -144,9 +142,7 @@ teacher_v = register_single_file(
 
 ```python
 student_v = register_single_file(
-    "<path>/model.tflite",
-    "<catalog>.<schema>.model_student",
-    "student_register"
+    "<path>/model.tflite", "<catalog>.<schema>.model_student", "student_register"
 )
 ```
 

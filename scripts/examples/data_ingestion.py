@@ -3,6 +3,7 @@ Simple Usage Examples - SiLabs MLOps Data Library
 """
 
 import time
+
 from sml.ops import data
 
 # =============================================================================

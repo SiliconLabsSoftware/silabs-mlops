@@ -20,7 +20,6 @@ Configuration for model deployment.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -38,10 +37,10 @@ class DeployConfig:
     """
 
     model_uri: str
-    device_ip: Optional[str] = None
+    device_ip: str | None = None
     interface: str = "swd"
     verify: bool = True
     halt: bool = False
     noverify: bool = False
-    rpi_host: Optional[str] = None
-    rpi_user: Optional[str] = "pi"
+    rpi_host: str | None = None
+    rpi_user: str | None = "pi"

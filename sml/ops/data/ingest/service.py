@@ -29,15 +29,15 @@ import threading
 import time
 import uuid
 import wave
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 from .config import IngestConfig
 from .ingestor import DataIngestor
 
 logger = logging.getLogger("CloudIngestor")
 
-_hw_cache: dict[str, Optional[str]] = {"name": None, "id": None}
+_hw_cache: dict[str, str | None] = {"name": None, "id": None}
 _hw_lock = threading.Lock()
 
 _DEFAULT_COMMANDER_PATH = str(
@@ -46,11 +46,9 @@ _DEFAULT_COMMANDER_PATH = str(
 
 
 def get_hw_info(
-    commander_path: Optional[str] = None,
-) -> tuple[Optional[str], Optional[str]]:
+    commander_path: str | None = None,
+) -> tuple[str | None, str | None]:
     """Return part number and unique ID from a connected board via commander-cli."""
-    global _hw_cache
-
     path = commander_path or os.getenv("COMMANDER_PATH", _DEFAULT_COMMANDER_PATH)
 
     with _hw_lock:
@@ -82,7 +80,7 @@ def get_hw_info(
             _hw_cache["name"] = part
             _hw_cache["id"] = uid
             return part, uid
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None, None
 
 
@@ -99,7 +97,7 @@ def _guess_content_type(path: Path) -> str:
 
 def build_wav_metadata(
     file_path: Path,
-    commander_path: Optional[str] = None,
+    commander_path: str | None = None,
 ) -> dict:
     """Build metadata for a WAV file (label from filename, sample rate from header)."""
     fname = file_path.name
@@ -110,7 +108,7 @@ def build_wav_metadata(
     try:
         with wave.open(str(file_path), "rb") as wf:
             file_sample_rate = wf.getframerate()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("Could not read WAV header for %s: %s", fname, e)
 
     hw_name, hw_id = get_hw_info(commander_path)
@@ -153,7 +151,7 @@ def build_generic_metadata(file_path: Path) -> dict:
 
 def default_metadata_builder(
     file_path: Path,
-    commander_path: Optional[str] = None,
+    commander_path: str | None = None,
 ) -> dict:
     """Use WAV-specific metadata when the file is a .wav, otherwise generic."""
     if file_path.suffix.lower() == ".wav":
@@ -171,10 +169,10 @@ class IngestionService:
         volume_path: str,
         pattern: str = "*.wav",
         workers: int = 4,
-        commander_path: Optional[str] = None,
-        metadata_builder: Optional[Callable[[Path], dict]] = None,
+        commander_path: str | None = None,
+        metadata_builder: Callable[[Path], dict] | None = None,
         poll_interval: float = 1.0,
-        log: Optional[Callable[[str], None]] = None,
+        log: Callable[[str], None] | None = None,
     ):
         self.config = config
         self.monitor_dir = Path(monitor_dir)
@@ -229,7 +227,7 @@ class IngestionService:
 
                 current_paths = {str(self.monitor_dir / f) for f in files}
                 seen_files &= current_paths
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 self._emit(f"Monitor error: {e}", level="error")
 
             self._stop_event.wait(self.poll_interval)
@@ -268,7 +266,7 @@ class IngestionService:
                         f"Worker-{worker_id} failed to process {fname}, keeping local copy",
                         level="error",
                     )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 self._emit(
                     f"Worker-{worker_id} error processing {fpath}: {e}",
                     level="error",

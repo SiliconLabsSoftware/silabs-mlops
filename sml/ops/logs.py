@@ -22,12 +22,13 @@ Handles local history storage and direct HTTP REST API streaming
 to Azure Databricks Delta Tables via OAuth.
 """
 
-import os
 import json
-import requests
-from datetime import datetime
+import os
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import List, Dict, Optional, Any
+from typing import Any
+
+import requests
 
 from sml.ops.config import USER_AGENT
 
@@ -37,12 +38,12 @@ class Logger:
 
     def __init__(
         self,
-        databricks_host: Optional[str] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        warehouse_name: Optional[str] = None,
-        warehouse_id: Optional[str] = None,
-        table_name: Optional[str] = None,
+        databricks_host: str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        warehouse_name: str | None = None,
+        warehouse_id: str | None = None,
+        table_name: str | None = None,
     ):
         # Load user's saved CLI credentials from hidden env file if they exist
         env_file = Path.home() / ".sml" / "ops" / ".env"
@@ -60,7 +61,7 @@ class Logger:
             conf_host = Config.ZEROBUS_WORKSPACE_URL or Config.ZEROBUS_SERVER_ENDPOINT
             conf_client = Config.ZEROBUS_CLIENT_ID
             conf_secret = Config.ZEROBUS_CLIENT_SECRET
-        except Exception:
+        except Exception:  # noqa: BLE001
             conf_host = conf_client = conf_secret = None
 
         # Fetch from args, env file, os env, or Config
@@ -91,7 +92,7 @@ class Logger:
             with open(self.local_log_file, "w") as f:
                 json.dump([], f)
 
-    def _get_token(self) -> Optional[str]:
+    def _get_token(self) -> str | None:
         if self._access_token:
             return self._access_token
         if not (self.databricks_host and self.client_id and self.client_secret):
@@ -111,11 +112,11 @@ class Logger:
             r.raise_for_status()
             self._access_token = r.json().get("access_token")
             return self._access_token
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Warning: Failed to fetch Databricks OAuth token: {e}")
             return None
 
-    def _resolve_warehouse_id(self) -> Optional[str]:
+    def _resolve_warehouse_id(self) -> str | None:
         if self.warehouse_id:
             return self.warehouse_id
 
@@ -135,7 +136,7 @@ class Logger:
                     return self.warehouse_id
             print(f"Warning: Could not find warehouse named '{self.warehouse_name}'")
             return None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Warning: Failed to resolve warehouse ID: {e}")
             return None
 
@@ -198,7 +199,7 @@ class Logger:
             if "INVALID_PARAMETER_MARKER_VALUE" in text or "MISSING_NAME" in text:
                 raise ValueError(text)
             return False, f"HTTP {response.status_code} - {text}"
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             emsg = str(e)
             if "INVALID_PARAMETER_MARKER_VALUE" in emsg or "MISSING_NAME" in emsg:
                 stmt2, params2 = self._build_positional_insert(table_name, log_entry)
@@ -221,13 +222,13 @@ class Logger:
                             return False, msg2
                         return True, None
                     return False, f"HTTP {r2.status_code} - {r2.text}"
-                except Exception as e2:
+                except Exception as e2:  # noqa: BLE001
                     return False, str(e2)
             return False, emsg
 
     def log_event(self, type: str, level: str, message: str, source: str = "System"):
         log_entry = {
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S"),
             "type": type,
             "level": level,
             "message": message,
@@ -236,7 +237,7 @@ class Logger:
 
         try:
             with open(self.local_log_file, "r") as f:
-                logs: List[Dict[str, Any]] = json.load(f)
+                logs: list[dict[str, Any]] = json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
             logs = []
         logs.append(log_entry)
@@ -265,7 +266,7 @@ class Logger:
                 )
                 if not ok and err:
                     print(f"Warning: Failed to stream log to Databricks: {err}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Warning: Failed to stream log to Databricks via REST API: {e}")
 
     def log_data_ingestion(
@@ -292,10 +293,10 @@ class Logger:
             type="Data Collection", level=level, message=message, source=source
         )
 
-    def view(self, event_type: Optional[str] = None):
+    def view(self, event_type: str | None = None):
         try:
             with open(self.local_log_file, "r") as f:
-                logs: List[Dict[str, Any]] = json.load(f)
+                logs: list[dict[str, Any]] = json.load(f)
 
             if event_type:
                 logs = [
@@ -343,7 +344,7 @@ class Logger:
 
         try:
             with open(self.local_log_file, "r") as f:
-                logs: List[Dict[str, Any]] = json.load(f)
+                logs: list[dict[str, Any]] = json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
             print("No local logs found to sync.")
             return
@@ -386,7 +387,7 @@ class Logger:
 
                 sys.stdout.write(f"\rUploading... {i + 1}/{len(logs)} completed.")
                 sys.stdout.flush()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 err = str(e)
                 if err != last_error:
                     print(f"\n[ERROR] Exception uploading logs: {err}")

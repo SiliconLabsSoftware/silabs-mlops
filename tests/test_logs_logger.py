@@ -1,10 +1,10 @@
-import unittest
-from unittest.mock import patch, MagicMock, mock_open
 import json
 import os
+import unittest
+from unittest.mock import MagicMock, mock_open, patch
 
-from sml.ops.logs import Logger
 from sml.ops.config import USER_AGENT
+from sml.ops.logs import Logger
 
 
 class TestLogger(unittest.TestCase):
@@ -282,16 +282,16 @@ class TestLogger(unittest.TestCase):
         mock_open_func = mock_open(
             read_data='DATABRICKS_HOST="http://fake-from-env"\nBAD_LINE\n'
         )
-        with patch("builtins.open", mock_open_func):
-            with patch.dict(os.environ, clear=True):
-                # Import Config mock throwing an exception to hit the bare fallback branch
-                with patch("sml.ops.config.Config", side_effect=Exception("No Config")):
-                    logger = Logger(client_id="id", client_secret="sec")
+        with (
+            patch("builtins.open", mock_open_func),
+            patch.dict(os.environ, clear=True),
+            # Import Config mock throwing an exception to hit the bare fallback branch
+            patch("sml.ops.config.Config", side_effect=Exception("No Config")),
+        ):
+            logger = Logger(client_id="id", client_secret="sec")
 
-                    self.assertEqual(
-                        os.environ.get("DATABRICKS_HOST"), "http://fake-from-env"
-                    )
-                    self.assertEqual(logger.databricks_host, "http://fake-from-env")
+            self.assertEqual(os.environ.get("DATABRICKS_HOST"), "http://fake-from-env")
+            self.assertEqual(logger.databricks_host, "http://fake-from-env")
 
     @patch("sml.ops.logs.requests.post")
     def test_user_agent_header_on_token(self, mock_post):

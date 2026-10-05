@@ -15,8 +15,6 @@
 # By installing, copying or otherwise using this software, you agree to the
 # terms of the MSLA.
 
-from typing import List, Optional
-
 
 class BLEConfig:
     def __init__(
@@ -29,7 +27,7 @@ class BLEConfig:
         sample_rate: int = 16000,
         channels: int = 1,
         sample_width: int = 2,
-        labels: Optional[List[str]] = None,
+        labels: list[str] | None = None,
         buffer_size: int = 32000,
         scan_timeout: float = 10.0,
     ):

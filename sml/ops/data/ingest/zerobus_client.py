@@ -19,15 +19,16 @@
 ZeroBus client wrapper for Databricks ingestion.
 """
 
-from typing import Dict, Any, List, Optional, Callable
+from collections.abc import Callable
+from typing import Any
 
 try:
-    from zerobus.sdk.sync import ZerobusSdk
     from zerobus.sdk.shared import (
         RecordType,
         StreamConfigurationOptions,
         TableProperties,
     )
+    from zerobus.sdk.sync import ZerobusSdk
 
     ZEROBUS_AVAILABLE = True
 except ImportError:
@@ -47,7 +48,7 @@ class ZerobusIngestClient:
         table_name: str,
         client_id: str,
         client_secret: str,
-        ack_callback: Optional[Callable[[Any], None]] = None,
+        ack_callback: Callable[[Any], None] | None = None,
     ):
         if not ZEROBUS_AVAILABLE:
             raise ImportError(
@@ -98,9 +99,9 @@ class ZerobusIngestClient:
                 f"Failed to connect to ZeroBus stream for table {self.table_name}. Error: {e}",
                 level="Error",
             )
-            raise e
+            raise
 
-    def ingest_record(self, record: Dict[str, Any], wait_for_ack: bool = True) -> None:
+    def ingest_record(self, record: dict[str, Any], wait_for_ack: bool = True) -> None:
         """Ingest a single JSON record into ZeroBus."""
         if not self._stream:
             raise RuntimeError("ZeroBus stream not initialized. Call connect() first.")
@@ -110,7 +111,7 @@ class ZerobusIngestClient:
             ack.wait_for_ack()
 
     def ingest_batch(
-        self, records: List[Dict[str, Any]], wait_for_ack: bool = True
+        self, records: list[dict[str, Any]], wait_for_ack: bool = True
     ) -> None:
         """Ingest multiple records sequentially."""
         for record in records:
@@ -124,7 +125,7 @@ class ZerobusIngestClient:
                 self.logger.log_data_ingestion(
                     f"Closed ZeroBus stream for table: {self.table_name}", level="Info"
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 self.logger.log_data_ingestion(
                     f"Error closing ZeroBus stream for table {self.table_name}: {e}",
                     level="Warning",

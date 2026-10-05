@@ -15,21 +15,23 @@
 # By installing, copying or otherwise using this software, you agree to the
 # terms of the MSLA.
 
-import os
-import wave
-import time
-import struct
 import asyncio
-from typing import Callable, Optional
+import os
+import struct
+import time
+import wave
+from collections.abc import Callable
+
 from bleak import BleakClient, BleakScanner
+
 from .config import BLEConfig
 
 
 class BLEReceiver:
     def __init__(
         self,
-        config: Optional[BLEConfig] = None,
-        log: Optional[Callable[[str], None]] = None,
+        config: BLEConfig | None = None,
+        log: Callable[[str], None] | None = None,
     ):
         if config is None:
             from sml.ops.ble import _config
@@ -73,7 +75,7 @@ class BLEReceiver:
                 self._log("--- Ready for next detection ---")
 
         elif sender.uuid.lower() == self.config.voice_result_uuid.lower():
-            ver, class_id, score, flags, ts = struct.unpack("<BBBB I", data)
+            _ver, class_id, score, _flags, _ts = struct.unpack("<BBBB I", data)
             self.current_label = (
                 self.config.labels[class_id]
                 if class_id < len(self.config.labels)

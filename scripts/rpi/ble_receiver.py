@@ -1,7 +1,7 @@
-import os
-import time
 import asyncio
+import os
 import struct
+import time
 import wave
 
 from sml.ops import ble
@@ -71,7 +71,7 @@ async def notification_handler(sender, data):
             print("--- Ready for next detection ---")
 
     elif sender.uuid.lower() == VOICE_RESULT_UUID.lower():
-        ver, class_id, score, flags, ts = struct.unpack("<BBBB I", data)
+        _ver, class_id, score, _flags, _ts = struct.unpack("<BBBB I", data)
         # CHANGE HERE: Ensure this list matches the firmware's class IDs in audio_classifier_config.h
         labels = ["on", "off", "unknown"]
         current_label = labels[class_id] if class_id < len(labels) else "unknown"
@@ -98,7 +98,7 @@ async def main():
 
     try:
         await receiver.start()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Error: {e}")
 
 

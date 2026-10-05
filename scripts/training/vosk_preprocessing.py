@@ -1,9 +1,10 @@
+import difflib
+import json
 import os
 import wave
-import json
-import difflib
+
 import numpy as np
-from vosk import Model, KaldiRecognizer
+from vosk import KaldiRecognizer, Model
 
 # --- Audio Helpers ---
 
@@ -83,10 +84,9 @@ class OnOffVosk:
             for w in res["result"]:
                 label = normalize_token(w["word"])
                 conf = w["conf"]
-                if label in ("on", "off"):
-                    if conf > max_conf:
-                        max_conf = conf
-                        best_label = label
+                if label in ("on", "off") and conf > max_conf:
+                    max_conf = conf
+                    best_label = label
 
         # Adaptive Thresholds (Slightly relaxed for better initial success)
         if best_label == "on" and max_conf >= 0.40:
@@ -148,13 +148,13 @@ def run_refinement(audio_dir, model_dir, auto_rename=False):
                     try:
                         os.rename(full_old_path, full_new_path)
                         print(f" [OK] Renamed: {f} -> {new_name}")
-                    except Exception as re:
+                    except Exception as re:  # noqa: BLE001
                         print(f" [WARN] Match found but rename failed: {re}")
                 else:
                     print(f" [MATCH] {f} -> {new_name} (auto_rename=False)")
             else:
                 print(f" [LOW CONF] {f}: {refined}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f" [FAIL] Could not process {f}: {e}")
 
     print(f"Done. Refined {len(results)} files.")
