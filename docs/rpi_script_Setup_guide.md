@@ -68,13 +68,21 @@ DEVICE_ADDRESS = os.getenv("BLE_DEVICE_ADDRESS", "<YOUR_MAC_ADDRESS>")
 VOICE_RESULT_UUID = os.getenv("BLE_VOICE_RESULT_UUID", "<YOUR_VOICE_RESULT_UUID>")
 AUDIO_DATA_UUID = os.getenv("BLE_AUDIO_DATA_UUID", "<YOUR_AUDIO_DATA_UUID>")
 OUTPUT_DIR = os.getenv("BLE_OUTPUT_DIR", "<YOUR_LOCAL_PATH>")
-SAMPLE_RATE = os.getenv("BLE_SAMPLE_RATE", 16000)    # <- (optional) replace these values with your own values
-CHANNELS = os.getenv("BLE_CHANNELS", 1)              # <- (optional) replace these values with your own values
-SAMPLE_WIDTH = os.getenv("BLE_SAMPLE_WIDTH", 2)      # <- (optional) replace these values with your own values
+SAMPLE_RATE = os.getenv(
+    "BLE_SAMPLE_RATE", 16000
+)  # <- (optional) replace these values with your own values
+CHANNELS = os.getenv(
+    "BLE_CHANNELS", 1
+)  # <- (optional) replace these values with your own values
+SAMPLE_WIDTH = os.getenv(
+    "BLE_SAMPLE_WIDTH", 2
+)  # <- (optional) replace these values with your own values
 
 # Labels: comma-separated, must match your firmware's class order
 _labels_env = os.getenv("BLE_LABELS")
-LABELS = _labels_env.split(",") if _labels_env else ["<keyword1>", "<keyword2>", "unknown"]
+LABELS = (
+    _labels_env.split(",") if _labels_env else ["<keyword1>", "<keyword2>", "unknown"]
+)
 ```
 
 > **LABELS – Most Important!** The firmware your board runs assigns an integer **Class ID** (0, 1, 2...) to each keyword it detects. Your `labels` list must match this exact order. Check your Simplicity Studio project (e.g., `audio_classifier_config.h` or `app_voice.h`) to find your keyword order. If you retrain with new keywords, just update this list!
@@ -97,7 +105,9 @@ os.environ["ZEROBUS_CLIENT_ID"] = "<your-service-principal-client-id>"
 os.environ["ZEROBUS_CLIENT_SECRET"] = "<your-service-principal-client-secret>"
 
 # ZeroBus Endpoint and Table
-os.environ["ZEROBUS_SERVER_ENDPOINT"] = "<your-workspace-id>.zerobus.<region>.azuredatabricks.net"
+os.environ["ZEROBUS_SERVER_ENDPOINT"] = (
+    "<your-workspace-id>.zerobus.<region>.azuredatabricks.net"
+)
 os.environ["ZEROBUS_TABLE_NAME"] = "<catalog>.<schema>.<table_name>"
 
 # Databricks Volume Path (Example: "/Volumes/main/default/audio_data")

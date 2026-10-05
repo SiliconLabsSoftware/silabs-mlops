@@ -185,5 +185,77 @@ class TestBleReceiveCommand(unittest.TestCase):
         self.assertIn("BLE receive failed", result.output)
 
 
+class TestDeployCommand(unittest.TestCase):
+    def setUp(self):
+        self.runner = CliRunner()
+
+    @patch("sml.ops.cli.RPiDeployer")
+    def test_deploy_local_without_rpi_host(self, mock_deployer_cls):
+        mock_deployer = MagicMock()
+        mock_deployer_cls.return_value = mock_deployer
+
+        with tempfile.NamedTemporaryFile(suffix=".s37", delete=False) as f:
+            f.write(b"fw")
+            path = f.name
+
+        try:
+            result = self.runner.invoke(cli, ["ops", "deploy", "--uri", path])
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertIn("local deployment", result.output)
+            kwargs = mock_deployer_cls.call_args.kwargs
+            self.assertIsNone(kwargs["rpi_host"])
+            self.assertEqual(kwargs["local_file_path"], path)
+            mock_deployer.deploy.assert_called_once()
+        finally:
+            os.unlink(path)
+
+    @patch("sml.ops.cli.RPiDeployer")
+    def test_deploy_remote_with_rpi_host(self, mock_deployer_cls):
+        mock_deployer = MagicMock()
+        mock_deployer_cls.return_value = mock_deployer
+
+        with tempfile.NamedTemporaryFile(suffix=".s37", delete=False) as f:
+            f.write(b"fw")
+            path = f.name
+
+        try:
+            result = self.runner.invoke(
+                cli,
+                [
+                    "ops",
+                    "deploy",
+                    "--uri",
+                    path,
+                    "--rpi-host",
+                    "192.168.1.10",
+                    "--rpi-user",
+                    "pi",
+                ],
+            )
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertIn("RPi deployment", result.output)
+            kwargs = mock_deployer_cls.call_args.kwargs
+            self.assertEqual(kwargs["rpi_host"], "192.168.1.10")
+            self.assertEqual(kwargs["rpi_user"], "pi")
+            mock_deployer.deploy.assert_called_once()
+        finally:
+            os.unlink(path)
+
+    def test_deploy_remote_path_requires_rpi_host(self):
+        with tempfile.NamedTemporaryFile(suffix=".s37", delete=False) as f:
+            f.write(b"fw")
+            path = f.name
+
+        try:
+            result = self.runner.invoke(
+                cli,
+                ["ops", "deploy", "--uri", path, "--remote-path", "/tmp/fw.s37"],
+            )
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("--remote-path requires --rpi-host", result.output)
+        finally:
+            os.unlink(path)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -26,6 +26,7 @@ settings so other components can access them in a consistent and secure way.
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 from sml.ops import __version__ as _SDK_VERSION

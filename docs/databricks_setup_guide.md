@@ -327,7 +327,7 @@ data.config(
     workspace_url=os.getenv("ZEROBUS_WORKSPACE_URL"),
     table_name=os.getenv("ZEROBUS_TABLE_NAME"),
     client_id=os.getenv("ZEROBUS_CLIENT_ID"),
-    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET")
+    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET"),
 )
 ```
 
@@ -341,7 +341,7 @@ data.config(
     workspace_url="https://your-workspace.databricks.com",
     table_name="catalog.schema.sensor_table",
     client_id="your-id",
-    client_secret="your-secret"
+    client_secret="your-secret",
 )
 ```
 

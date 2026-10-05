@@ -19,21 +19,23 @@
 Provides a Python wrapper around Silicon Labs' ML profiler for running and parsing model profiling.
 """
 
-import os
 import json
-import yaml
-import subprocess
-import shutil
-import re
-import stat
+import os
 import platform
-from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
-from datetime import datetime
+import re
+import shutil
+import stat
+import subprocess
 import tempfile
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, ClassVar
+
 import requests
-from sml.ops.config import Config, USER_AGENT
+import yaml
+
+from sml.ops.config import USER_AGENT, Config
 from sml.ops.logs import Logger
 
 
@@ -60,19 +62,19 @@ class ProfileResult:
     device_id: str
     output_dir: str
     # Session summary
-    arena_size_kb: Optional[float] = None
-    total_macs: Optional[int] = None
-    board: Optional[str] = None
+    arena_size_kb: float | None = None
+    total_macs: int | None = None
+    board: str | None = None
     # Layer breakdown
-    layers: List[LayerProfile] = field(default_factory=list)
+    layers: list[LayerProfile] = field(default_factory=list)
     # Output artifact paths
-    summary_txt_path: Optional[str] = None
-    report_json_path: Optional[str] = None
-    pftrace_path: Optional[str] = None
-    captured_packets_path: Optional[str] = None
-    history_log_path: Optional[str] = None
+    summary_txt_path: str | None = None
+    report_json_path: str | None = None
+    pftrace_path: str | None = None
+    captured_packets_path: str | None = None
+    history_log_path: str | None = None
     # Raw report data
-    raw_report: Optional[Dict[str, Any]] = None
+    raw_report: dict[str, Any] | None = None
 
 
 @dataclass
@@ -80,8 +82,8 @@ class DeviceInfo:
     """Information about a connected Silicon Labs development board."""
 
     device_id: str
-    board: Optional[str] = None
-    connection_type: Optional[str] = None
+    board: str | None = None
+    connection_type: str | None = None
     raw: str = ""
 
 
@@ -92,7 +94,7 @@ class NPUProfiler:
     """
 
     # Candidate binary names for mvp_profiler
-    _PROFILER_CANDIDATES = ["mvp_profiler", "mvp_profiler.exe"]
+    _PROFILER_CANDIDATES: ClassVar[list[str]] = ["mvp_profiler", "mvp_profiler.exe"]
 
     # Source for automatic downloads and the SDK-managed install directory.
     # The binaries are tracked with Git LFS, so they are served from the
@@ -108,8 +110,8 @@ class NPUProfiler:
         self.logger = Logger()
 
     def _resolve_binary(
-        self, candidates: List[str], override: Optional[str] = None
-    ) -> Optional[str]:
+        self, candidates: list[str], override: str | None = None
+    ) -> str | None:
         """Resolve a binary path, using override or searching PATH."""
         if override:
             p = Path(override)
@@ -122,7 +124,7 @@ class NPUProfiler:
                 return found
         return None
 
-    def _resolve_profiler(self, profiler_path: Optional[str] = None) -> List[str]:
+    def _resolve_profiler(self, profiler_path: str | None = None) -> list[str]:
         """Resolve the profiler command, returning a list [cmd, arg1, ...]"""
         # 1. Try explicit path
         if profiler_path:
@@ -169,14 +171,14 @@ class NPUProfiler:
                 if candidate.is_file():
                     return [str(candidate)]
 
-        raise EnvironmentError(
+        raise OSError(
             "Silicon Labs MVP Profiler (mvp_profiler) not found.\n"
             "Please ensure npu_toolkit is installed or mvp_profiler is in your PATH."
         )
 
     def install_profiler(
         self,
-        dest: Optional[str] = None,
+        dest: str | None = None,
         force: bool = False,
         timeout: int = 300,
     ) -> str:
@@ -235,7 +237,7 @@ class NPUProfiler:
         )
         return str(target)
 
-    def _resolve_sdm(self, profiler_path: Optional[str] = None) -> Optional[str]:
+    def _resolve_sdm(self, profiler_path: str | None = None) -> str | None:
         """Resolve the sdm binary path (optional, for device discovery)."""
         if profiler_path:
             p = Path(profiler_path)
@@ -246,7 +248,7 @@ class NPUProfiler:
                         return str(sdm_candidate)
         return self._resolve_binary(["sdm", "sdm.exe"])
 
-    def discover_devices(self, profiler_path: Optional[str] = None) -> List[DeviceInfo]:
+    def discover_devices(self, profiler_path: str | None = None) -> list[DeviceInfo]:
         """
         Discover connected Silicon Labs development boards using `sdm adapter list`.
 
@@ -262,7 +264,11 @@ class NPUProfiler:
 
         try:
             result = subprocess.run(
-                [sdm, "adapter", "list"], capture_output=True, text=True, timeout=15
+                [sdm, "adapter", "list"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
             )
             output = result.stdout + result.stderr
             return self._parse_adapter_list(output)
@@ -271,13 +277,13 @@ class NPUProfiler:
             print(f"WARNING: {msg}")
             self.logger.log_model_profiling(message=msg, level="Warning")
             return []
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             msg = f"Device discovery failed: {e}"
             print(f"WARNING: {msg}")
             self.logger.log_model_profiling(message=msg, level="Error")
             return []
 
-    def _parse_adapter_list(self, output: str) -> List[DeviceInfo]:
+    def _parse_adapter_list(self, output: str) -> list[DeviceInfo]:
         """
         Parse `sdm adapter list` output.
 
@@ -322,16 +328,16 @@ class NPUProfiler:
     def profile(
         self,
         model_path: str,
-        device_id: Optional[str] = None,
-        output_dir: Optional[str] = None,
-        profiler_path: Optional[str] = None,
+        device_id: str | None = None,
+        output_dir: str | None = None,
+        profiler_path: str | None = None,
         gui: bool = False,
         timeout: int = 600,
         accelerator: str = "mvpv1",
-        platform: Optional[str] = None,
+        platform: str | None = None,
         weights_paging: bool = False,
         use_simulator: bool = False,
-        volume_path: Optional[str] = None,
+        volume_path: str | None = None,
     ) -> ProfileResult:
         """
         Profile a model using the MVP Profiler (mvp_profiler).
@@ -382,7 +388,7 @@ class NPUProfiler:
             output_dir = tempfile.mkdtemp(prefix="npu_prof_")
             is_temp_dir = True
         elif not output_dir:
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             output_dir = str(
                 Path.cwd() / "profiling_results" / f"{model_p.stem or 'gui'}-{ts}"
             )
@@ -436,7 +442,7 @@ class NPUProfiler:
         try:
             if gui:
                 # GUI server runs indefinitely unless interrupted
-                proc = subprocess.run(cmd, text=True, timeout=None)
+                proc = subprocess.run(cmd, text=True, timeout=None, check=False)
             else:
                 # Stream output to the console and simultaneously log to the history file
                 with open(history_file_path, "w", encoding="utf-8") as history_file:
@@ -470,7 +476,7 @@ class NPUProfiler:
             profiler_error = RuntimeError(
                 f"Profiler timed out after {timeout} seconds."
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             if not profiler_error:
                 profiler_error = RuntimeError(f"Failed to launch profiler: {e}")
 
@@ -531,7 +537,7 @@ class NPUProfiler:
             print("[warn] Volume path must start with /Volumes/. Skipping upload.")
             return str(local_dir)
 
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         remote_base = f"{p}/{model_stem}-{ts}"
 
         try:
@@ -589,7 +595,7 @@ class NPUProfiler:
             print(f"[dbx] Successfully uploaded {uploaded} files.")
             return remote_base
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"[warn] Volume upload failed: {e}")
             return str(local_dir)
 
@@ -608,7 +614,7 @@ class NPUProfiler:
         )
 
         # Search for primary output files (may be nested in a timestamped subdir)
-        def find_file(name: str) -> Optional[Path]:
+        def find_file(name: str) -> Path | None:
             matches = list(out_p.rglob(name))
             return matches[0] if matches else None
 
@@ -665,7 +671,7 @@ class NPUProfiler:
 
                 layers_raw = raw.get("layers") or raw.get("per_layer") or []
                 result.layers = self._parse_layers(layers_raw)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 msg = f"Could not fully parse report file {report_file.name}: {e}"
                 print(f"NOTE: {msg}")
                 self.logger.log_model_profiling(message=msg, level="Warning")
@@ -676,7 +682,7 @@ class NPUProfiler:
 
         return result
 
-    def _parse_layers(self, layers_raw: list) -> List[LayerProfile]:
+    def _parse_layers(self, layers_raw: list) -> list[LayerProfile]:
         """Parse per-layer data from report.json."""
         layers = []
         for lr in layers_raw:
@@ -745,7 +751,7 @@ class NPUProfiler:
             m = re.search(r"(?:Board|Platform)\s*[:\|]\s*(\S+)", text, re.IGNORECASE)
             if m:
                 result.board = m.group(1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             msg = f"Failed to parse summary.txt: {e}"
             self.logger.log_model_profiling(message=msg, level="Warning")
 

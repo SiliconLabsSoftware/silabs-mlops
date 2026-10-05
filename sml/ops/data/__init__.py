@@ -37,20 +37,22 @@ Usage:
     >>> data.ingest(sensor_data)
 """
 
-from typing import List, Dict, Any, Optional, Callable
+from collections.abc import Callable
+from typing import Any
 
-from .ingest import IngestConfig, DataIngestor, IngestionService
 from sml.ops.config import Config
 
-_config: Optional[IngestConfig] = None
+from .ingest import DataIngestor, IngestConfig, IngestionService
+
+_config: IngestConfig | None = None
 
 __all__ = [
+    "IngestionService",
     "config",
+    "file_ingest",
     "ingest",
     "ingest_from_file",
-    "file_ingest",
     "serve",
-    "IngestionService",
 ]
 
 
@@ -105,7 +107,7 @@ def config(
     print("[OK] Configuration saved. You can now use data.ingest() to send data.")
 
 
-def ingest(data: List[Dict[str, Any]]) -> bool:
+def ingest(data: list[dict[str, Any]]) -> bool:
     """
     Ingest data to Databricks Delta Lake via ZeroBus.
 
@@ -173,7 +175,7 @@ def ingest_from_file(file_path: str) -> bool:
     return ingestor.ingest(buffer_path=file_path)
 
 
-def file_ingest(file_path: str, volume_path: str, metadata: Dict[str, Any]) -> bool:
+def file_ingest(file_path: str, volume_path: str, metadata: dict[str, Any]) -> bool:
     """
     Comprehensive file ingestion: Upload file to Volume and ingest metadata.
 
@@ -202,7 +204,7 @@ def file_ingest(file_path: str, volume_path: str, metadata: Dict[str, Any]) -> b
     return ingestor.file_ingest(file_path, volume_path, metadata)
 
 
-def _ingest_config_from_env_or_stored() -> Optional[IngestConfig]:
+def _ingest_config_from_env_or_stored() -> IngestConfig | None:
     """Build IngestConfig from module state or Config env vars."""
     if _config is not None:
         return _config
@@ -234,11 +236,11 @@ def serve(
     *,
     pattern: str = "*.wav",
     workers: int = 4,
-    commander_path: Optional[str] = None,
-    metadata_builder: Optional[Callable] = None,
+    commander_path: str | None = None,
+    metadata_builder: Callable | None = None,
     block: bool = True,
-    log: Optional[Callable[[str], None]] = None,
-) -> Optional[IngestionService]:
+    log: Callable[[str], None] | None = None,
+) -> IngestionService | None:
     """
     Start the continuous file-watcher ingestion service.
 

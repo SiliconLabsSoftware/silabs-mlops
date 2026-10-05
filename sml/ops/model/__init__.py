@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-MSLA
 # @file __init__.py
-# @brief Public API for model profiling and Raspberry Pi deployment.
+# @brief Public API for model profiling and firmware deployment.
 #
 # # License
 # Copyright 2026 Silicon Laboratories Inc. www.silabs.com
@@ -17,21 +17,21 @@
 
 """
 sml.ops.model
-Public API for profiling (NPU) and deployment (RPi / Commander).
+Public API for profiling (NPU) and deployment (local or RPi / Commander).
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from .config import DeployConfig
 from .deployer import RPiDeployer
 
 __all__ = [
+    "CommanderInstaller",
     "DeployConfig",
-    "RPiDeployer",
+    "LayerProfile",
     "NPUProfiler",
     "ProfileResult",
-    "LayerProfile",
-    "CommanderInstaller",
+    "RPiDeployer",
     "profile",
 ]
 
@@ -49,16 +49,16 @@ def _get_npu_profiler():
 
 def profile(
     model_path: str,
-    device_id: Optional[str] = None,
-    output_dir: Optional[str] = None,
-    profiler_path: Optional[str] = None,
+    device_id: str | None = None,
+    output_dir: str | None = None,
+    profiler_path: str | None = None,
     gui: bool = False,
     timeout: int = 600,
     accelerator: str = "mvpv1",
-    platform: Optional[str] = None,
+    platform: str | None = None,
     weights_paging: bool = False,
     use_simulator: bool = False,
-    volume_path: Optional[str] = None,
+    volume_path: str | None = None,
 ) -> Any:
     """Profile a model using the Silicon Labs MVP Profiler (mvp_profiler)."""
     return _get_npu_profiler().profile(

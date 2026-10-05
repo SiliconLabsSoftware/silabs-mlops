@@ -119,9 +119,9 @@ Follow these steps in cells 10-12 to register your models in the Unity Catalog M
 
 ```python
 teacher_v = register_single_file(
-    "<path to>/model.teacher.h5", # path to the teacher model in Databricks workspace
-    "<catalog>.<schema>.model_teacher", # name of the teacher model to register in UC
-    "teacher_register" # name of the registration run
+    "<path to>/model.teacher.h5",  # path to the teacher model in Databricks workspace
+    "<catalog>.<schema>.model_teacher",  # name of the teacher model to register in UC
+    "teacher_register",  # name of the registration run
 )
 ```
 
@@ -129,9 +129,9 @@ teacher_v = register_single_file(
 
 ```python
 student_v = register_single_file(
-    "<path to>/model.tflite", # path to the student model in Databricks workspace
-    "<catalog>.<schema>.model_student", # name of the student model to register in UC
-    "student_register" # name of the registration run
+    "<path to>/model.tflite",  # path to the student model in Databricks workspace
+    "<catalog>.<schema>.model_student",  # name of the student model to register in UC
+    "student_register",  # name of the registration run
 )
 ```
 
@@ -147,10 +147,10 @@ path_teacher = "/Workspace/Users/<user-email>/tmp/teacher_accuracy.txt"
 ...
 # Tag the model version in UC
 client.set_model_version_tag(
-    name="<catalog>.<schema>.model_teacher", # Must provide the same registration name of the teacher model in UC that you have previously registered in Cell-11.
-    version=teacher_v, 
+    name="<catalog>.<schema>.model_teacher",  # Must provide the same registration name of the teacher model in UC that you have previously registered in Cell-11.
+    version=teacher_v,
     key="accuracy",
-    value=str(teacher_accuracy)
+    value=str(teacher_accuracy),
 )
 ```
 

@@ -42,4 +42,4 @@ from .ingestor import DataIngestor
 from .service import IngestionService
 from .zerobus_client import ZerobusIngestClient
 
-__all__ = ["IngestConfig", "DataIngestor", "IngestionService", "ZerobusIngestClient"]
+__all__ = ["DataIngestor", "IngestConfig", "IngestionService", "ZerobusIngestClient"]

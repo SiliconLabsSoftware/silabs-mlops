@@ -1,9 +1,10 @@
 import json
 import unittest
-from unittest.mock import patch, MagicMock, mock_open
-from sml.ops.data.ingest.ingestor import DataIngestor
-from sml.ops.data.ingest.config import IngestConfig
+from unittest.mock import MagicMock, mock_open, patch
+
 from sml.ops.config import USER_AGENT
+from sml.ops.data.ingest.config import IngestConfig
+from sml.ops.data.ingest.ingestor import DataIngestor
 
 
 class TestDataIngestor(unittest.TestCase):

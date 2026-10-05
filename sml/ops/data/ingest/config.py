@@ -20,7 +20,6 @@ Configuration for ZeroBus ingestion.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -43,8 +42,8 @@ class IngestConfig:
     table_name: str
     client_id: str
     client_secret: str
-    buffer_path: Optional[str] = None
-    volume_path: Optional[str] = None
+    buffer_path: str | None = None
+    volume_path: str | None = None
 
     def __post_init__(self):
         """Strip whitespace from all string fields to prevent silent auth failures

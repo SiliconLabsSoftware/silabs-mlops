@@ -21,16 +21,18 @@ Data ingestion orchestrator for ZeroBus.
 
 import json
 import logging
-import traceback
 import time
-import requests
+import traceback
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any
+
+import requests
+
+from sml.ops.config import USER_AGENT
+from sml.ops.logs import Logger
 
 from .config import IngestConfig
 from .zerobus_client import ZerobusIngestClient
-from sml.ops.logs import Logger
-from sml.ops.config import USER_AGENT
 
 # Suppress verbose INFO logs from ZeroBus SDK
 logging.getLogger("databricks_zerobus_ingest_sdk").setLevel(logging.WARNING)
@@ -51,8 +53,8 @@ class DataIngestor:
         self.cli_logger = Logger()
 
     def _read_buffered_records(
-        self, buffer_path: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, buffer_path: str | None = None
+    ) -> list[dict[str, Any]]:
         """Read buffered JSON records from local storage (array or JSON-lines)."""
         path = buffer_path or self.config.buffer_path
         if not path:
@@ -90,8 +92,8 @@ class DataIngestor:
 
     def ingest(
         self,
-        data: Optional[List[Dict[str, Any]]] = None,
-        buffer_path: Optional[str] = None,
+        data: list[dict[str, Any]] | None = None,
+        buffer_path: str | None = None,
     ) -> bool:
         """Main ingestion workflow."""
         records = data if data is not None else self._read_buffered_records(buffer_path)
@@ -122,7 +124,7 @@ class DataIngestor:
             )
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             err = str(e)
 
             if "401" in err or "Unauthorized" in err:
@@ -158,10 +160,10 @@ class DataIngestor:
         finally:
             try:
                 self.client.close()
-            except Exception as close_err:
+            except Exception as close_err:  # noqa: BLE001
                 print(f"[DEBUG] Could not cleanly close stream: {close_err}")
 
-    def _get_oauth_token(self) -> Optional[str]:
+    def _get_oauth_token(self) -> str | None:
         """Fetch Databricks OAuth token using client credentials."""
         if not (
             self.config.workspace_url
@@ -187,7 +189,7 @@ class DataIngestor:
             )
             r.raise_for_status()
             return r.json()["access_token"]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Error: OAuth token fetch failed: {e}")
             return None
 
@@ -227,18 +229,18 @@ class DataIngestor:
 
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Error: Volume upload failed: {e}")
             return False
 
     def file_ingest(
-        self, file_path: str, volume_path: str, metadata: Dict[str, Any]
+        self, file_path: str, volume_path: str, metadata: dict[str, Any]
     ) -> bool:
         """Upload a file to a UC volume and ingest metadata using ZeroBus."""
         try:
             with open(file_path, "rb") as f:
                 file_bytes = f.read()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Error: Could not read file {file_path}: {e}")
             return False
 

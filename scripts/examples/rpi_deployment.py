@@ -1,15 +1,16 @@
 """
-Raspberry Pi Deployment Example - SiLabs MLOps
-----------------------------------------------
-This script demonstrates how to use the 'RPiDeployer' to:
-1. Transfer a local firmware or model file to a remote Raspberry Pi via SCP.
-2. Flash it to a target Silicon Labs device connected to that Pi via SSH
-   and Simplicity Commander.
+Firmware Deployment Example - SiLabs MLOps
+------------------------------------------
+This script demonstrates how to use `RPiDeployer` to flash firmware either:
+1. Locally via Simplicity Commander (USB/J-Link on this machine), or
+2. Remotely via a Raspberry Pi (SCP + SSH).
 """
 
-import os
 import logging
+import os
+
 from dotenv import load_dotenv
+
 from sml.ops.model.deployer import RPiDeployer
 
 # Suppress TensorFlow oneDNN floating-point warnings
@@ -23,25 +24,24 @@ load_dotenv()
 
 
 def run_example():
-    print("\n--- SiLabs MLOps RPi Deployment ---")
+    print("\n--- SiLabs MLOps Deployment ---")
 
     # Path to your local firmware file (e.g., an .s37 or .bin file)
-    # Using the example file found in the directory
     local_file = "examples/bt_soc_thermometer_freertos.s37"
 
-    # The IP address or hostname of your Raspberry Pi
-    # Replace this with your actual Raspberry Pi IP Address
-    rpi_host = "192.168.1.111"
-
-    # The SSH user for the Raspberry Pi
+    # Omit rpi_host (None) to flash a board attached to this machine.
+    # Set rpi_host to deploy via a Raspberry Pi over SSH.
+    rpi_host = None  # e.g. "192.168.1.111"
     rpi_user = "aimlraspberry"
 
     print(f"  Local File : {local_file}")
-    print(f"  RPi Host   : {rpi_host} (User: {rpi_user})\n")
+    if rpi_host:
+        print(f"  RPi Host   : {rpi_host} (User: {rpi_user})\n")
+    else:
+        print("  Target     : local Simplicity Commander\n")
 
-    # CONFIGURE RPI DEPLOYMENT
-    # Simplicity Commander is discovered automatically on the Pi (system PATH,
-    # ~/.sml/bin, or ~/Desktop). Install it first if needed:
+    # Install Commander first if needed:
+    #   sml install --tool commander
     #   sml install --tool commander --rpi-host <RPI_IP> --rpi-user <USER>
     try:
         deployer = RPiDeployer(
@@ -59,11 +59,12 @@ def run_example():
             print("Skipping actual deployment step.")
             return
 
-        print(f"Starting deployment to {rpi_host}...")
+        target = f"{rpi_user}@{rpi_host}" if rpi_host else "local machine"
+        print(f"Starting deployment to {target}...")
         deployer.deploy()
-        print("\nDeployment via Raspberry Pi completed successfully.")
+        print(f"\nDeployment to {target} completed successfully.")
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"\nDeployment failed: {e}")
 
 

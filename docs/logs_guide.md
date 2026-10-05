@@ -63,7 +63,7 @@ data.config(
     workspace_url=os.getenv("ZEROBUS_WORKSPACE_URL"),
     table_name=os.getenv("ZEROBUS_TABLE_NAME"),
     client_id=os.getenv("ZEROBUS_CLIENT_ID"),
-    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET")
+    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET"),
 )
 ```
 
@@ -74,9 +74,9 @@ from sml.ops import data
 data.config(
     server_endpoint="your-zerobus-endpoint.cloud.databricks.com",
     workspace_url="https://your-workspace.cloud.databricks.com",
-    table_name="catalog.schema.some_temp_table",   # Required globally (ignored by Logger class)
+    table_name="catalog.schema.some_temp_table",  # Required globally (ignored by Logger class)
     client_id="your-service-principal-id",
-    client_secret="your-service-principal-secret"
+    client_secret="your-service-principal-secret",
 )
 ```
 ### 1. Initialization
@@ -88,8 +88,7 @@ from sml.ops.logs import Logger
 
 # Initialize Logger with your specific table and warehouse
 logger = Logger(
-    table_name="main.default.system_logs",
-    warehouse_name="Serverless Starter Warehouse"
+    table_name="main.default.system_logs", warehouse_name="Serverless Starter Warehouse"
 )
 
 logger.sync_to_databricks()
@@ -99,6 +98,7 @@ logger.sync_to_databricks()
 ```python
 # View all local actions on your PC
 from sml.ops.logs import Logger
+
 logger = Logger()
 logger.view()
 
@@ -114,8 +114,7 @@ You can record custom events from your own automated scripts. If `table_name` is
 ```python
 # Initialize Logger with your specific table and warehouse
 logger = Logger(
-    table_name="main.default.system_logs",
-    warehouse_name="Serverless Starter Warehouse"
+    table_name="main.default.system_logs", warehouse_name="Serverless Starter Warehouse"
 )
 
 # Log a generic system event
@@ -123,7 +122,7 @@ logger.log_event(
     type="Calibration",
     level="Info",
     message="System calibration sequence started",
-    source="Setup Script"
+    source="Setup Script",
 )
 ```
 
@@ -132,16 +131,14 @@ logger.log_event(
 If you are writing a script that wraps core CLI functionality, you can use the built-in MLOps categories to keep your logs standardized. If `table_name` is set, this immediately streams to your Databricks Delta Table no need to sync.
 
 ```python
-
 from sml.ops.logs import Logger
+
 logger = Logger(
-    table_name="main.default.system_logs",
-    warehouse_name="Serverless Starter Warehouse"
+    table_name="main.default.system_logs", warehouse_name="Serverless Starter Warehouse"
 )
 # Use component-specific helpers
 logger.log_model_profiling("Completed local simulation for model_v2.tflite")
 logger.log_data_ingestion("Successfully sent batch to Delta Lake")
-
 ```
 
 ### 5. Syncing Logs (Offline Support)
@@ -151,7 +148,6 @@ If you were working offline on an airplane or without Wi-Fi, the logger safely s
 ```python
 # Bulk sync any local logs that were recorded offline
 logger.sync_to_databricks()
-
 ```
 
 ## Local Log Storage

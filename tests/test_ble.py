@@ -1,15 +1,15 @@
+import asyncio
 import os
+import struct
 import sys
 import unittest
-import asyncio
-import struct
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import sml.ops.ble
-from sml.ops.ble import config, BLEConfig, BLEReceiver
+from sml.ops.ble import BLEConfig, BLEReceiver, config
 
 
 class TestBLEConfig(unittest.TestCase):

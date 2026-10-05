@@ -61,7 +61,7 @@ try:
     print(f"  ✓ Total MACs:    {result.total_macs:,}")
     print(f"  ✓ Remote Folder: {result.output_dir}")
     print(f"  ✓ History Log:   {result.history_log_path}")
-except Exception as e:
+except Exception as e:  # noqa: BLE001
     # If there is a failure, the script will crash here
     # but the history.log will STILL upload to the volume path.
     print(f"  [!] Profiling failed -> {e}")

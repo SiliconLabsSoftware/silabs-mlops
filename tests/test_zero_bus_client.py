@@ -1,5 +1,6 @@
-from unittest.mock import MagicMock, patch
 import sys
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from sml.ops.config import USER_AGENT

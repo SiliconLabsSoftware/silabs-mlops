@@ -9,28 +9,29 @@ Edit placeholders before running:
   DATA_ROOT = "Path to your volumes dataset"
 """
 
+import logging
 import os
 import re
 import warnings
-import logging
-import pandas as pd
-import soundfile as sf
-import librosa
-import audiomentations
-import noisereduce
-import pyloudnorm
 from glob import glob
-from sklearn.model_selection import train_test_split
-import numpy as np
-import tensorflow as tf
+
+import audiomentations
+import librosa
 import mltk.core as mltk_core
+import noisereduce
+import numpy as np
+import pandas as pd
+import pyloudnorm
+import soundfile as sf
+import tensorflow as tf
+from mltk.core.keras.models import KnowledgeDistillationModel
 from mltk.core.preprocess.audio.audio_feature_generator import (
     AudioFeatureGeneratorSettings,
 )
-from mltk.core.preprocess.utils import tf_dataset as tf_dataset_utils
 from mltk.core.preprocess.utils import audio as audio_utils
+from mltk.core.preprocess.utils import tf_dataset as tf_dataset_utils
 from mltk.utils.python import install_pip_package
-from mltk.core.keras.models import KnowledgeDistillationModel
+from sklearn.model_selection import train_test_split
 
 WORKSPACE_MODELS_DIR = "<YOUR_WORKSPACE_DIR>/models"
 
@@ -206,13 +207,20 @@ def my_student_model_saver(
 # ---------------------------------------------------------------------
 my_model.checkpoint["monitor"] = "val_accuracy"
 
-my_model.reduce_lr_on_plateau = dict(
-    monitor="accuracy", factor=0.95, patience=1, min_delta=0.01
-)
+my_model.reduce_lr_on_plateau = {
+    "monitor": "accuracy",
+    "factor": 0.95,
+    "patience": 1,
+    "min_delta": 0.01,
+}
 
-my_model.early_stopping = dict(
-    monitor="val_student_loss", mode="min", verbose=1, patience=30, min_delta=0.0001
-)
+my_model.early_stopping = {
+    "monitor": "val_student_loss",
+    "mode": "min",
+    "verbose": 1,
+    "patience": 30,
+    "min_delta": 0.0001,
+}
 
 my_model.train_callbacks = [tf.keras.callbacks.TerminateOnNaN()]
 
@@ -311,7 +319,7 @@ def safe_load_wav(path: str):
         if data.ndim > 1:
             data = librosa.to_mono(data.T)
         return data.astype(np.float32), sr
-    except Exception:
+    except Exception:  # noqa: BLE001
         data, sr = librosa.load(path, sr=None, mono=True)
         return data.astype(np.float32), sr
 
@@ -394,7 +402,7 @@ def audio_augmentation_pipeline(
             spec = np.expand_dims(spec, -1)
             x_batch[i] = spec
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"[WARN] Failed for {audio_path}: {e}")
             x_batch[i] = np.zeros((height, width, 1), dtype=np.int8)
 
@@ -489,7 +497,7 @@ def get_teacher_h5_path(try_archive=False, check_exists=True) -> str:
     if try_archive:
         try:
             retval = my_model.get_archive_file(f"{my_model.name}{ext}")
-        except Exception:
+        except Exception:  # noqa: S110, BLE001
             pass
 
     if retval is None:
@@ -524,9 +532,13 @@ def prepare_teacher_or_student_model(train_teacher: bool | None = None):
         my_model.checkpoint["save_best_only"] = True
         my_model.checkpoint["filepath"] = "teacher-weights.h5"
 
-        my_model.early_stopping = dict(
-            monitor="loss", mode="min", patience=10, verbose=1, min_delta=1e-4
-        )
+        my_model.early_stopping = {
+            "monitor": "loss",
+            "mode": "min",
+            "patience": 10,
+            "verbose": 1,
+            "min_delta": 1e-4,
+        }
 
         my_model.tflite_converter = None
 
@@ -540,9 +552,13 @@ def prepare_teacher_or_student_model(train_teacher: bool | None = None):
         my_model.checkpoint["save_best_only"] = True
         my_model.checkpoint["filepath"] = "student-weights.h5"
 
-        my_model.early_stopping = dict(
-            monitor="student_loss", mode="min", patience=10, verbose=1, min_delta=1e-4
-        )
+        my_model.early_stopping = {
+            "monitor": "student_loss",
+            "mode": "min",
+            "patience": 10,
+            "verbose": 1,
+            "min_delta": 1e-4,
+        }
 
         # TFLite int8 conversion for student
         my_model.tflite_converter["optimizations"] = [tf.lite.Optimize.DEFAULT]

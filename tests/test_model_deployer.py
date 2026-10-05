@@ -1,6 +1,7 @@
-from pathlib import Path
 import types
+from pathlib import Path
 from unittest.mock import patch
+
 import pytest
 
 # Testing the public API (exercises __init__.py and config.py)
@@ -12,17 +13,45 @@ def deployer(tmp_path: Path):
     """Fixture to create a deployer with a temporary dummy firmware file."""
     fw = tmp_path / "firmware.s37"
     fw.write_text("dummy_binary_content")
-    return RPiDeployer(
+    d = RPiDeployer(
         rpi_host="192.168.1.111",
         rpi_user="aimlraspberry",
         local_file_path=str(fw),
     )
+    d.resolved_commander = "/bin/cmd"
+    return d
+
+
+@pytest.fixture
+def local_deployer(tmp_path: Path):
+    """Fixture for local (no RPi) deployment."""
+    fw = tmp_path / "firmware.s37"
+    fw.write_text("dummy_binary_content")
+    d = RPiDeployer(local_file_path=str(fw))
+    d.resolved_commander = "/bin/cmd"
+    return d
 
 
 def test_rpi_deployer_init_validation(tmp_path: Path):
     """Ensure it raises Error if local file is missing."""
     with pytest.raises(FileNotFoundError):
         RPiDeployer("h", "u", str(tmp_path / "missing.s37"))
+
+
+def test_local_deployer_init_validation(tmp_path: Path):
+    """Local mode still requires a firmware file."""
+    with pytest.raises(FileNotFoundError):
+        RPiDeployer(local_file_path=str(tmp_path / "missing.s37"))
+
+
+def test_local_deployer_requires_file_path():
+    with pytest.raises(TypeError, match="local_file_path is required"):
+        RPiDeployer()
+
+
+def test_is_remote_property(deployer, local_deployer):
+    assert deployer.is_remote is True
+    assert local_deployer.is_remote is False
 
 
 def test_find_remote_commander_logic(monkeypatch, deployer):
@@ -46,6 +75,23 @@ def test_find_remote_commander_logic(monkeypatch, deployer):
         deployer._find_remote_commander("u@h")
 
 
+def test_find_local_commander_on_path(monkeypatch, local_deployer):
+    monkeypatch.setattr(
+        "sml.ops.model.deployer.shutil.which",
+        lambda name: (
+            "/usr/local/bin/commander-cli" if name == "commander-cli" else None
+        ),
+    )
+    assert local_deployer._find_local_commander() == "/usr/local/bin/commander-cli"
+
+
+def test_find_local_commander_missing(monkeypatch, local_deployer, tmp_path):
+    monkeypatch.setattr("sml.ops.model.deployer.shutil.which", lambda name: None)
+    monkeypatch.setattr("sml.ops.model.deployer.Path.home", lambda: tmp_path)
+    with pytest.raises(RuntimeError, match="Could not locate Simplicity Commander"):
+        local_deployer._find_local_commander()
+
+
 def test_jlink_serial_detection_parsing(monkeypatch, deployer):
     """Verify that multiple serial numbers are correctly extracted."""
     adapter_out = "serialNumber = 123456\nserialNumber=987654"
@@ -56,7 +102,7 @@ def test_jlink_serial_detection_parsing(monkeypatch, deployer):
         ),
     )
 
-    serials = deployer._get_jlink_serials("u@h")
+    serials = deployer._get_jlink_serials(ssh_target="u@h")
     assert serials == ["123456", "987654"]
 
 
@@ -68,12 +114,12 @@ def test_device_name_parsing(monkeypatch, deployer):
         lambda *a, **k: types.SimpleNamespace(returncode=0, stdout=info_out, stderr=""),
     )
 
-    name = deployer._get_device_name("u@h", "123")
+    name = deployer._get_device_name("123", ssh_target="u@h")
     assert name == "EFR32MG26B510F3200IM68"
 
 
 def test_full_deployment_flow_orchestration(monkeypatch, deployer):
-    """Test the complete deploy() sequence with all mocks."""
+    """Test the complete remote deploy() sequence with all mocks."""
 
     def fake_run(cmd, **k):
         j = " ".join(cmd)
@@ -93,6 +139,36 @@ def test_full_deployment_flow_orchestration(monkeypatch, deployer):
 
     # This should run through discovery, scp, detection, and flash without errors
     deployer.deploy()
+
+
+def test_full_local_deployment_flow(monkeypatch, local_deployer):
+    """Local deploy uses commander directly (no ssh/scp)."""
+    calls = []
+
+    def fake_run(cmd, **k):
+        calls.append(cmd)
+        j = " ".join(str(c) for c in cmd)
+        if "adapter" in j and "list" in j:
+            return types.SimpleNamespace(
+                returncode=0, stdout="serialNumber=123", stderr=""
+            )
+        if "device" in j and "info" in j:
+            return types.SimpleNamespace(
+                returncode=0, stdout="Part Number : EFR32", stderr=""
+            )
+        return types.SimpleNamespace(returncode=0, stdout="OK", stderr="")
+
+    monkeypatch.setattr(
+        "sml.ops.model.deployer.RPiDeployer._find_local_commander",
+        lambda self: "/bin/cmd",
+    )
+    monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", fake_run)
+
+    local_deployer.deploy()
+
+    joined = [" ".join(str(c) for c in cmd) for cmd in calls]
+    assert all("ssh" not in j and "scp" not in j for j in joined)
+    assert any("flash" in j for j in joined)
 
 
 def test_interactive_selection_logic(monkeypatch, deployer):
@@ -119,7 +195,7 @@ def test_flash_failure_handling(monkeypatch, deployer):
     """Verify that a non-zero exit code during flash raises RuntimeError."""
 
     def run_fail(cmd, **k):
-        if " flash " in " ".join(cmd):
+        if " flash " in " ".join(cmd) or (len(cmd) > 1 and cmd[1] == "flash"):
             return types.SimpleNamespace(
                 returncode=1, stdout="", stderr="Verification failed"
             )
@@ -127,7 +203,7 @@ def test_flash_failure_handling(monkeypatch, deployer):
 
     monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", run_fail)
     with pytest.raises(RuntimeError) as exc:
-        deployer._flash_firmware("pi@h", "/tmp/t.s37", "123", "EFR32")
+        deployer._flash_firmware("/tmp/t.s37", "123", "EFR32", ssh_target="pi@h")
     assert "Flash failed" in str(exc.value)
 
 
@@ -148,7 +224,7 @@ def test_error_adapter_list_failure(monkeypatch, deployer):
     """Test Adapter List Failure branch."""
 
     def run_fail(cmd, **k):
-        if "adapter list" in " ".join(cmd):
+        if "adapter list" in " ".join(cmd) or (len(cmd) > 1 and cmd[1] == "adapter"):
             return types.SimpleNamespace(
                 returncode=1, stdout="", stderr="Adapter list failed"
             )
@@ -156,7 +232,7 @@ def test_error_adapter_list_failure(monkeypatch, deployer):
 
     monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", run_fail)
     with pytest.raises(RuntimeError) as exc:
-        deployer._get_jlink_serials("pi@h")
+        deployer._get_jlink_serials(ssh_target="pi@h")
     assert "Adapter list failed" in str(exc.value)
 
 
@@ -175,16 +251,16 @@ def test_error_no_devices_connected(monkeypatch, deployer):
 
 def test_device_info_failures(monkeypatch, deployer):
     """Hits lines in deployer.py"""
-    # 1. Command itself fails (Line 163)
+    # 1. Command itself fails
     monkeypatch.setattr(
         "sml.ops.model.deployer.subprocess.run",
         lambda *a, **k: types.SimpleNamespace(returncode=1, stdout="", stderr="Crash"),
     )
     with pytest.raises(RuntimeError) as exc:
-        deployer._get_device_name("u@h", "123")
+        deployer._get_device_name("123", ssh_target="u@h")
     assert "Device info failed" in str(exc.value)
 
-    # 2. Command succeeds but output is missing Part Number (Line 168)
+    # 2. Command succeeds but output is missing Part Number
     monkeypatch.setattr(
         "sml.ops.model.deployer.subprocess.run",
         lambda *a, **k: types.SimpleNamespace(
@@ -192,7 +268,7 @@ def test_device_info_failures(monkeypatch, deployer):
         ),
     )
     with pytest.raises(RuntimeError) as exc:
-        deployer._get_device_name("u@h", "123")
+        deployer._get_device_name("123", ssh_target="u@h")
     assert "Could not extract device name" in str(exc.value)
 
 
@@ -210,7 +286,7 @@ def test_multiple_devices_invalid_input(monkeypatch, deployer):
 
     monkeypatch.setattr("sml.ops.model.deployer.subprocess.run", fake_run)
 
-    # Simulate user typing a number out of range (Scenario for lines 69-71)
+    # Simulate user typing a number out of range
     with patch("builtins.input", return_value="99"), pytest.raises(RuntimeError) as exc:
         deployer.deploy()
     assert "Invalid selection" in str(exc.value)

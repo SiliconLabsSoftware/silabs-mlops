@@ -19,9 +19,9 @@
 Silicon Labs MLOps SDK CLI.
 """
 
+import asyncio
 import os
 import shutil
-import asyncio
 from pathlib import Path
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -29,11 +29,10 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import click
 
-from sml.ops.data.ingest import DataIngestor, IngestConfig
 from sml.ops.config import Config
+from sml.ops.data.ingest import DataIngestor, IngestConfig
 from sml.ops.logs import Logger
 from sml.ops.model.deployer import RPiDeployer
-
 
 _cli_logger = Logger()
 
@@ -69,13 +68,11 @@ def _resolve_ble_float(cli_value, config_value, default):
 @click.group()
 def cli():
     """Silicon Labs MLOps SDK CLI."""
-    pass
 
 
 @cli.group()
 def ops():
     """MLOps commands."""
-    pass
 
 
 @ops.group(name="ingest", invoke_without_command=True)
@@ -332,7 +329,7 @@ def profile(
         )
         if not gui:
             click.echo(f"[OK] Profiling completed. Results in: {result.output_dir}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         click.echo(f"[FAIL] Profiling failed: {e}", err=True)
         raise click.Abort()
 
@@ -348,7 +345,7 @@ def _install_profiler(dest, force) -> bool:
     except FileExistsError as e:
         click.echo(f"[SKIP] {e}")
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         click.echo(f"[FAIL] mvp_profiler installation failed: {e}", err=True)
         return False
 
@@ -397,7 +394,7 @@ def _install_commander(dest, force, rpi_host=None, rpi_user=None) -> bool:
     except FileExistsError as e:
         click.echo(f"[SKIP] {e}")
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         click.echo(f"[FAIL] Simplicity Commander installation failed: {e}", err=True)
         return False
     return True
@@ -453,19 +450,32 @@ def install(ctx, tool, dest, force, rpi_host, rpi_user):
     "--uri", required=True, help="Local file path to firmware/model (.s37/.bin/.hex)."
 )
 @click.option("--serial", help="Target J-Link serial number (optional).")
-@click.option("--rpi-host", required=True, help="Target Pi IP/Hostname.")
+@click.option(
+    "--rpi-host",
+    help="Raspberry Pi hostname/IP. When omitted, flashes via local Simplicity Commander.",
+)
 @click.option(
     "--rpi-user", default="aimlraspberry", show_default=True, help="SSH user."
 )
-@click.option("--remote-path", help="Optional remote path on Pi.")
+@click.option(
+    "--remote-path",
+    help="Optional remote path on Pi (requires --rpi-host).",
+)
 def deploy(uri, serial, rpi_host, rpi_user, remote_path):
     """
-    Deploy firmware/model to a Silicon Labs device via Raspberry Pi (SCP + SSH).
+    Deploy firmware/model to a Silicon Labs device.
 
-    Uploads the file to the Pi, runs Commander for J-Link detection, then flashes.
+    Without --rpi-host, runs Simplicity Commander on this machine (USB/J-Link).
+    With --rpi-host, uploads via SCP and flashes over SSH on the Pi.
     """
-    click.echo(f"Initializing RPi deployment for: {uri}")
-    click.echo(f"Target: {rpi_user}@{rpi_host}")
+    if remote_path and not rpi_host:
+        raise click.UsageError("--remote-path requires --rpi-host.")
+
+    if rpi_host:
+        click.echo(f"Initializing RPi deployment for: {uri}")
+        click.echo(f"Target: {rpi_user}@{rpi_host}")
+    else:
+        click.echo(f"Initializing local deployment for: {uri}")
 
     try:
         deployer = RPiDeployer(
@@ -477,6 +487,7 @@ def deploy(uri, serial, rpi_host, rpi_user, remote_path):
 
         if remote_path:
             ssh_target = f"{rpi_user}@{rpi_host}"
+            deployer.resolved_commander = deployer._find_remote_commander(ssh_target)
             _cli_logger.log_model_deployment(
                 f"Targeting remote Raspberry Pi: {ssh_target}"
             )
@@ -487,7 +498,7 @@ def deploy(uri, serial, rpi_host, rpi_user, remote_path):
 
             serial_to_use = serial
             if not serial_to_use:
-                serials = deployer._get_jlink_serials(ssh_target)
+                serials = deployer._get_jlink_serials(ssh_target=ssh_target)
                 if not serials:
                     raise RuntimeError("No J-Link devices connected.")
                 if len(serials) == 1:
@@ -501,18 +512,21 @@ def deploy(uri, serial, rpi_host, rpi_user, remote_path):
                     )
                     serial_to_use = serials[choice - 1]
 
-            device_name = deployer._get_device_name(ssh_target, serial_to_use)
+            device_name = deployer._get_device_name(
+                serial_to_use, ssh_target=ssh_target
+            )
             deployer._flash_firmware(
-                ssh_target, remote_path, serial_to_use, device_name
+                remote_path, serial_to_use, device_name, ssh_target=ssh_target
             )
         else:
             deployer.deploy(jlink_serial=serial)
 
+        target_label = f"{rpi_user}@{rpi_host}" if rpi_host else "local machine"
         click.echo("✓ Deployment finished successfully!")
         _cli_logger.log_model_deployment(
-            f"Successfully deployed {uri} to {rpi_host}", level="Success"
+            f"Successfully deployed {uri} to {target_label}", level="Success"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         error_msg = f"Deployment failed: {e}"
         click.echo(f"✗ {error_msg}", err=True)
         _cli_logger.log_model_deployment(error_msg, level="Error")
@@ -522,7 +536,6 @@ def deploy(uri, serial, rpi_host, rpi_user, remote_path):
 @ops.group()
 def ble():
     """BLE data collection commands."""
-    pass
 
 
 @ble.command(name="receive")
@@ -600,7 +613,8 @@ def receive(
     scan_timeout,
 ):
     """Connect to a BLE device and save keyword-triggered audio samples."""
-    from sml.ops.ble import config as ble_config, BLEReceiver
+    from sml.ops.ble import BLEReceiver
+    from sml.ops.ble import config as ble_config
 
     resolved_labels = _resolve_ble_value(labels, Config.BLE_LABELS, None)
     if isinstance(resolved_labels, str):
@@ -660,7 +674,7 @@ def receive(
         receiver.stop()
         click.echo("\nStopping...")
         _cli_logger.log_data_collection("BLE receive stopped by user.")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         click.echo(f"[FAIL] BLE receive failed: {e}", err=True)
         _cli_logger.log_data_collection(f"BLE receive failed: {e}", level="Error")
         raise click.Abort()

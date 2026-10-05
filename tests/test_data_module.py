@@ -1,16 +1,15 @@
 import unittest
+from unittest.mock import MagicMock, mock_open, patch
+
 import requests
-from unittest.mock import patch, MagicMock, mock_open
 
-
-from sml.ops.config import USER_AGENT
-from sml.ops.data.ingest.config import IngestConfig
-from sml.ops.data.ingest import ingestor as ingestor_mod
-from sml.ops.data.ingest.ingestor import DataIngestor
-from sml.ops.data.ingest import zerobus_client as zerobus_mod
-from sml.ops.data.ingest.zerobus_client import ZerobusIngestClient
 import sml.ops.data
-
+from sml.ops.config import USER_AGENT
+from sml.ops.data.ingest import ingestor as ingestor_mod
+from sml.ops.data.ingest import zerobus_client as zerobus_mod
+from sml.ops.data.ingest.config import IngestConfig
+from sml.ops.data.ingest.ingestor import DataIngestor
+from sml.ops.data.ingest.zerobus_client import ZerobusIngestClient
 
 # ======================================================================
 #  Test IngestConfig
@@ -82,8 +81,8 @@ class TestZerobusIngestClient(unittest.TestCase):
     def test_connect_failure(self, *_):
         inst = MagicMock()
         zerobus_mod.ZerobusSdk.return_value = inst
-        inst.create_stream.side_effect = Exception("Connect Err")
-        with self.assertRaises(Exception):
+        inst.create_stream.side_effect = RuntimeError("Connect Err")
+        with self.assertRaises(RuntimeError):
             self.client.connect()
 
 

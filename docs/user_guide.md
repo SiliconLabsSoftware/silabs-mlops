@@ -71,7 +71,7 @@ data.config(
     workspace_url=os.getenv("ZEROBUS_WORKSPACE_URL"),
     table_name=os.getenv("ZEROBUS_TABLE_NAME"),
     client_id=os.getenv("ZEROBUS_CLIENT_ID"),
-    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET")
+    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET"),
 )
 ```
 
@@ -84,7 +84,7 @@ data.config(
     workspace_url="https://your-workspace.databricks.com",
     table_name="catalog.schema.sensor_table",
     client_id="your-id",
-    client_secret="your-secret"
+    client_secret="your-secret",
 )
 ```
 
@@ -128,14 +128,14 @@ from sml.ops import ble
 ble.config(
     device_name="MySilabsBoard",
     device_address="AA:BB:CC:DD:EE:FF",
-    voice_result_uuid="00002A37-0000-1000-8000-00805F9B34FB", # Example UUID
+    voice_result_uuid="00002A37-0000-1000-8000-00805F9B34FB",  # Example UUID
     audio_data_uuid="00002A38-0000-1000-8000-00805F9B34FB",  # Example UUID
     output_dir="./captured_audio",
     sample_rate=16000,
     channels=1,
     sample_width=2,
     labels=["on", "off", "unknown"],
-    buffer_size=32000
+    buffer_size=32000,
 )
 ```
 For more information, refer to the [ble_module_guide.md](ble_module_guide.md).
@@ -158,17 +158,21 @@ For detailed information, see the [data_ingest_guide.md](data_ingest_guide.md).
 # 1. Configure once (either by fetching your system's environment variables (using `os.getenv()`) inside `data.config()` or by providing the strings directly.)
 import os
 from sml.ops import data
-# Fetching system's environment variables (using `os.getenv()`) inside `data.config()`  
+
+# Fetching system's environment variables (using `os.getenv()`) inside `data.config()`
 data.config(
     server_endpoint=os.getenv("ZEROBUS_SERVER_ENDPOINT"),
     workspace_url=os.getenv("ZEROBUS_WORKSPACE_URL"),
     table_name=os.getenv("ZEROBUS_TABLE_NAME"),
     client_id=os.getenv("ZEROBUS_CLIENT_ID"),
-    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET")
+    client_secret=os.getenv("ZEROBUS_CLIENT_SECRET"),
 )
 
 # 2. Ingest batch of records
-records = [{"device_id": "sensor-01", "temp": 24.5}, {"device_id": "sensor-02", "temp": 22.1}]
+records = [
+    {"device_id": "sensor-01", "temp": 24.5},
+    {"device_id": "sensor-02", "temp": 22.1},
+]
 data.ingest(records)
 ```
 
@@ -184,14 +188,14 @@ data.config(
     workspace_url="https://your-workspace.cloud.databricks.com",
     table_name="catalog.schema.audio_events",
     client_id="your-service-principal-id",
-    client_secret="your-service-principal-secret"
+    client_secret="your-service-principal-secret",
 )
 
 # Requires the full destination path in Databricks (including filename)
 success = data.file_ingest(
     file_path="local_sample.wav",
     volume_path="/Volumes/main/default/audio/sample_01.wav",
-    metadata={"device_id": "gateway-01", "class_label": "keyword"}
+    metadata={"device_id": "gateway-01", "class_label": "keyword"},
 )
 ```
 
@@ -209,7 +213,9 @@ To sync a local file to Databricks, use the `ingest_from_file` function. This is
 from sml.ops import data
 
 # Ingest from file (uses the same configuration from above)
-success = data.ingest_from_file("path/to/sensor_data.json") # -> provide the path to your local buffer file 
+success = data.ingest_from_file(
+    "path/to/sensor_data.json"
+)  # -> provide the path to your local buffer file
 if success:
     print("✓ File data sent to Databricks successfully!")
 ```
@@ -246,12 +252,12 @@ You can automatically upload all profiling results to a Databricks Volume by pro
 from sml.ops import model
 
 result = model.profile(
-    model_path="models/my_model.tflite", #-> add your model path here
-    volume_path="/Volumes/main/default/profiling_results", #-> add your volume path here
-    use_simulator=True
+    model_path="models/my_model.tflite",  # -> add your model path here
+    volume_path="/Volumes/main/default/profiling_results",  # -> add your volume path here
+    use_simulator=True,
 )
 # result.output_dir is a dynamic path that always points to where your results are stored
-# result.output_dir will now point to the remote Databricks URL path (e.g., /Volumes/main/default/...). 
+# result.output_dir will now point to the remote Databricks URL path (e.g., /Volumes/main/default/...).
 print(f"Remote Results: {result.output_dir}")
 ```
 
@@ -262,21 +268,29 @@ Every session generates a folder (local or cloud) with:
 
 ---
 
-## Raspberry Pi Model Deployment
+## Model Deployment
 
-Deploy and flash firmware/models to Silicon Labs hardware connected to a remote Raspberry Pi via **SCP** and **SSH**.
+Deploy and flash firmware/models to Silicon Labs hardware using Simplicity Commander. By default this runs on your workstation (USB/J-Link). Optionally deploy via a remote Raspberry Pi over **SCP** and **SSH**.
 
-### Deployment via CLI
+### Local deployment via CLI
 ```bash
-silabs-mlops model deploy --uri ./my_model.s37 --rpi-host <RPI_IP> --rpi-user <USER_NAME>
+sml ops deploy --uri ./my_model.s37
+```
+
+Install Commander first if needed: `sml install --tool commander`.
+
+### Remote (Raspberry Pi) deployment via CLI
+```bash
+sml ops deploy --uri ./my_model.s37 --rpi-host <RPI_IP> --rpi-user <USER_NAME>
 ```
 
 ### How it Works
-1. **Transfer**: The tool SCPs the local firmware to the Pi's `/tmp` directory.
-2. **Detection**: Remotely invokes Commander to find the J-Link serial and target chip.
-3. **Flash**: Executes the final flash command and verifies the write.
+1. **Commander**: Locates `commander-cli` locally, or on the Pi when `--rpi-host` is set.
+2. **Transfer** (remote only): SCPs the local firmware to the Pi's `/tmp` directory.
+3. **Detection**: Invokes Commander to find the J-Link serial and target chip.
+4. **Flash**: Executes the final flash command and verifies the write.
 
-For detailed SSH and udev setup, see the [rpi_deployment_guide.md](rpi_deployment_guide.md).
+For detailed SSH and udev setup, see the [deployment_guide.md](deployment_guide.md).
 
 ---
 
