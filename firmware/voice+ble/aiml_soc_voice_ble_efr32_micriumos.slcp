@@ -157,6 +157,9 @@ configuration:
   - name: SL_IOSTREAM_UART_VCOM_CONVERT_BY_DEFAULT_LF_TO_CRLF
     value: 1
     condition: [iostream_uart]
+  - name: SL_IOSTREAM_EUSART_VCOM_CONVERT_BY_DEFAULT_LF_TO_CRLF
+    value: 1
+    condition: [iostream_eusart]
   - name: SL_ML_AUDIO_FEATURE_GENERATION_AUDIO_BUFFER_SIZE
     value: 4096
   - name: SL_ML_AUDIO_FEATURE_GENERATION_AUDIO_GAIN
