@@ -86,15 +86,33 @@ class BLEReceiver:
             )
             self.audio_buffer = bytearray()
 
+    def _matches_advertisement(self, device, advertisement) -> bool:
+        wanted_name = (self.config.device_name or "").strip()
+        advertised_name = (
+            device.name or getattr(advertisement, "local_name", None) or ""
+        ).strip()
+        if wanted_name and advertised_name == wanted_name:
+            return True
+        service = (self.config.voice_service_uuid or "").strip().lower()
+        advertised_uuids = [
+            str(uuid).lower()
+            for uuid in (getattr(advertisement, "service_uuids", None) or [])
+        ]
+        return bool(service and service in advertised_uuids)
+
     async def start(self):
-        self._log(f"Scanning for {self.config.device_name}...")
+        label = (self.config.device_name or "").strip() or "Voice BLE device"
+        self._log(f"Scanning for {label}...")
         timeout = self.config.scan_timeout
-        device = await BleakScanner.find_device_by_address(
-            self.config.device_address, timeout=timeout
-        )
+        device = None
+        address = (self.config.device_address or "").strip()
+        if address:
+            device = await BleakScanner.find_device_by_address(
+                address, timeout=timeout
+            )
         if not device:
             device = await BleakScanner.find_device_by_filter(
-                lambda d, ad: d.name == self.config.device_name, timeout=timeout
+                self._matches_advertisement, timeout=timeout
             )
 
         if not device:

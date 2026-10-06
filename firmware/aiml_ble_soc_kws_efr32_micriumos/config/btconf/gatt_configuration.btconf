@@ -5,7 +5,7 @@
       <informativeText>Abstract: The generic_access service contains generic information about the device. All available Characteristics are readonly. </informativeText>
       <characteristic id="device_name" name="Device Name" sourceId="org.bluetooth.characteristic.gap.device_name" uuid="2A00">
         <informativeText/>
-        <value length="19" type="utf-8" variable_length="false">Voice_BLE_Controller_Demo</value>
+        <value length="9" type="utf-8" variable_length="false">Voice_BLE</value>
         <properties read="true" read_requirement="optional" write="true" write_requirement="optional"/>
       </characteristic>
       <characteristic name="Appearance" sourceId="org.bluetooth.characteristic.gap.appearance" uuid="2A01">
@@ -44,7 +44,7 @@
         <properties read="true" read_requirement="mandatory"/>
       </characteristic>
     </service>
-    <service advertise="false" id="voice_result_service" name="Voice Result Service" type="primary" uuid="f7ee5e0c-1882-4c85-a6f1-8d6f81f10901">
+    <service advertise="true" id="voice_result_service" name="Voice Result Service" type="primary" uuid="f7ee5e0c-1882-4c85-a6f1-8d6f81f10901">
       <informativeText>Custom service for transporting voice classification results over BLE.</informativeText>
       <characteristic id="voice_result" name="Voice Result" uuid="f7ee5e0c-1882-4c85-a6f1-8d6f81f10902">
         <informativeText>Payload layout: version(1), class_id(1), score(1), flags(1), timestamp_ms(4).</informativeText>

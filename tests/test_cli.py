@@ -137,6 +137,7 @@ class TestBleReceiveCommand(unittest.TestCase):
         mock_config.BLE_DEVICE_ADDRESS = "11:22:33:44:55:66"
         mock_config.BLE_OUTPUT_DIR = "/env/audio"
         mock_config.BLE_VOICE_RESULT_UUID = None
+        mock_config.BLE_VOICE_SERVICE_UUID = None
         mock_config.BLE_AUDIO_DATA_UUID = None
         mock_config.BLE_LABELS = "on,off"
         mock_config.BLE_SAMPLE_RATE = "8000"
@@ -157,6 +158,9 @@ class TestBleReceiveCommand(unittest.TestCase):
         self.assertEqual(kwargs["channels"], 2)
         self.assertEqual(kwargs["buffer_size"], 16000)
         self.assertEqual(kwargs["scan_timeout"], 15.0)
+        self.assertEqual(
+            kwargs["voice_service_uuid"], "f7ee5e0c-1882-4c85-a6f1-8d6f81f10901"
+        )
 
     @patch("sml.ops.cli.asyncio.run", side_effect=KeyboardInterrupt)
     @patch("sml.ops.ble.config")

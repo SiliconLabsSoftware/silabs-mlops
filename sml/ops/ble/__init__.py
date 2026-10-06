@@ -34,6 +34,7 @@ def config(
     labels: list[str] | None = None,
     buffer_size: int = 32000,
     scan_timeout: float = 10.0,
+    voice_service_uuid: str = "f7ee5e0c-1882-4c85-a6f1-8d6f81f10901",
 ) -> BLEConfig:
     """
     Configure the BLE hardware settings globally.
@@ -51,6 +52,7 @@ def config(
         labels=labels,
         buffer_size=buffer_size,
         scan_timeout=scan_timeout,
+        voice_service_uuid=voice_service_uuid,
     )
     return _config
 

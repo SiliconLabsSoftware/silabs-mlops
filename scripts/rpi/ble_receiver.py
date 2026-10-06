@@ -10,7 +10,7 @@ from sml.ops import ble
 # BLE Configuration
 # ========================
 # Set these to match your board's configuration
-DEVICE_NAME = os.getenv("BLE_DEVICE_NAME", "<YOUR_DEVICE_NAME>")
+DEVICE_NAME = os.getenv("BLE_DEVICE_NAME", "Voice_BLE")
 DEVICE_ADDRESS = os.getenv("BLE_DEVICE_ADDRESS", "<YOUR_DEVICE_MAC_ADDRESS>")
 
 # UUIDs from gatt_configuration.btconf

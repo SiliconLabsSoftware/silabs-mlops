@@ -30,11 +30,13 @@ class BLEConfig:
         labels: list[str] | None = None,
         buffer_size: int = 32000,
         scan_timeout: float = 10.0,
+        voice_service_uuid: str = "f7ee5e0c-1882-4c85-a6f1-8d6f81f10901",
     ):
         self.device_name = device_name
         self.device_address = device_address
         self.voice_result_uuid = voice_result_uuid
         self.audio_data_uuid = audio_data_uuid
+        self.voice_service_uuid = voice_service_uuid
         self.output_dir = output_dir
         self.sample_rate = int(sample_rate)
         self.channels = int(channels)

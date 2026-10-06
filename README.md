@@ -88,7 +88,7 @@ The Silicon Labs MLOps SDK is a professional toolset designed to seamlessly brid
   ZEROBUS_CLIENT_SECRET="<service-principal-client-secret>"
 
   # BLE configuration
-  BLE_DEVICE_NAME="<BLE App Name>"
+  BLE_DEVICE_NAME="Voice_BLE"
   BLE_DEVICE_ADDRESS="xx:xx:xx:xx:xx:xx"
   BLE_VOICE_RESULT_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
   BLE_AUDIO_DATA_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
