@@ -243,14 +243,18 @@ configuration:
   - psa_crypto
   name: SL_PSA_KEY_USER_SLOT_COUNT
   value: '0'
-- condition:
-  - iostream_usart
-  name: SL_IOSTREAM_USART_VCOM_CONVERT_BY_DEFAULT_LF_TO_CRLF
+- name: SL_IOSTREAM_USART_VCOM_CONVERT_BY_DEFAULT_LF_TO_CRLF
   value: '1'
-- condition:
-  - iostream_uart
-  name: SL_IOSTREAM_UART_VCOM_CONVERT_BY_DEFAULT_LF_TO_CRLF
+  condition:
+    - iostream_usart
+- name: SL_IOSTREAM_UART_VCOM_CONVERT_BY_DEFAULT_LF_TO_CRLF
   value: '1'
+  condition:
+    - iostream_uart
+- name: SL_IOSTREAM_EUSART_VCOM_CONVERT_BY_DEFAULT_LF_TO_CRLF
+  value: '1'
+  condition:
+    - iostream_eusart
 - name: SL_ML_AUDIO_FEATURE_GENERATION_AUDIO_BUFFER_SIZE
   value: '4096'
 - name: SL_ML_AUDIO_FEATURE_GENERATION_AUDIO_GAIN
