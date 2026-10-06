@@ -339,7 +339,7 @@ The exact same workflow is available directly from the terminal without writing 
 silabs-mlops ingest --file sensor_data.json
 
 # 2. Profile model performance (Optional)
-silabs-mlops profile --model ./my_model.tflite --accelerator mvpv1
+sml ops profile --model ./my_model.tflite --accelerator mvpv1 --simulate
 
 # 3. Deploy firmware to a locally attached device
 sml ops deploy --uri ./my_model.s37

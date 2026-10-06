@@ -145,6 +145,12 @@ from sml.ops import model
 result = model.profile("models/my_model.tflite", use_simulator=True)
 ```
 
+**Via CLI:**
+
+```bash
+sml ops profile --model models/my_model.tflite --simulate
+```
+
 ---
 
 ## Output Artifacts

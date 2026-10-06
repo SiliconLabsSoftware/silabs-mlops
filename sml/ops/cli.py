@@ -301,12 +301,25 @@ def sync_logs():
 @click.option("--platform", help="Target platform board (e.g., brd2605, brd2608a).")
 @click.option("--gui", is_flag=True, help="Launch Profiler GUI.")
 @click.option(
+    "--simulate",
+    is_flag=True,
+    help="Profile with the local NPU simulator (no hardware required).",
+)
+@click.option(
     "--volume-path",
     help="Directly upload results to a Databricks Volume and delete local artifacts.",
 )
 @click.pass_context
 def profile(
-    ctx, model_path, device_id, output, accelerator, platform, gui, volume_path
+    ctx,
+    model_path,
+    device_id,
+    output,
+    accelerator,
+    platform,
+    gui,
+    simulate,
+    volume_path,
 ):
     """Profile a model using the MVP Profiler (mvp_profiler)."""
     if ctx.invoked_subcommand is not None:
@@ -316,6 +329,8 @@ def profile(
 
     if not model_path:
         raise click.UsageError("Missing required option '--model-path' / '--model'.")
+    if simulate and device_id:
+        raise click.UsageError("--simulate cannot be used with --device-id / --device.")
 
     try:
         result = run_profile(
@@ -325,6 +340,7 @@ def profile(
             gui=gui,
             accelerator=accelerator,
             platform=platform,
+            use_simulator=simulate,
             volume_path=volume_path,
         )
         if not gui:

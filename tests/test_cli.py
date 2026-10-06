@@ -257,5 +257,72 @@ class TestDeployCommand(unittest.TestCase):
             os.unlink(path)
 
 
+class TestProfileCommand(unittest.TestCase):
+    def setUp(self):
+        self.runner = CliRunner()
+
+    @patch("sml.ops.model.profile")
+    def test_profile_simulate_passes_use_simulator(self, mock_profile):
+        mock_result = MagicMock()
+        mock_result.output_dir = "/tmp/profiling"
+        mock_profile.return_value = mock_result
+
+        with tempfile.NamedTemporaryFile(suffix=".tflite", delete=False) as f:
+            f.write(b"model")
+            path = f.name
+
+        try:
+            result = self.runner.invoke(
+                cli, ["ops", "profile", "--model", path, "--simulate"]
+            )
+            self.assertEqual(result.exit_code, 0, result.output)
+            kwargs = mock_profile.call_args.kwargs
+            self.assertTrue(kwargs["use_simulator"])
+            self.assertIsNone(kwargs["device_id"])
+        finally:
+            os.unlink(path)
+
+    @patch("sml.ops.model.profile")
+    def test_profile_defaults_to_hardware(self, mock_profile):
+        mock_result = MagicMock()
+        mock_result.output_dir = "/tmp/profiling"
+        mock_profile.return_value = mock_result
+
+        with tempfile.NamedTemporaryFile(suffix=".tflite", delete=False) as f:
+            f.write(b"model")
+            path = f.name
+
+        try:
+            result = self.runner.invoke(cli, ["ops", "profile", "--model", path])
+            self.assertEqual(result.exit_code, 0, result.output)
+            kwargs = mock_profile.call_args.kwargs
+            self.assertFalse(kwargs["use_simulator"])
+        finally:
+            os.unlink(path)
+
+    def test_profile_simulate_rejects_device(self):
+        with tempfile.NamedTemporaryFile(suffix=".tflite", delete=False) as f:
+            f.write(b"model")
+            path = f.name
+
+        try:
+            result = self.runner.invoke(
+                cli,
+                [
+                    "ops",
+                    "profile",
+                    "--model",
+                    path,
+                    "--simulate",
+                    "--device",
+                    "123456789",
+                ],
+            )
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("--simulate cannot be used with", result.output)
+        finally:
+            os.unlink(path)
+
+
 if __name__ == "__main__":
     unittest.main()
