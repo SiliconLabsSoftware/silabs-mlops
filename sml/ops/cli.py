@@ -36,6 +36,8 @@ from sml.ops.model.deployer import RPiDeployer
 
 _cli_logger = Logger()
 
+_DEFAULT_DEVICE_NAME = "Voice_BLE"
+_DEFAULT_VOICE_SERVICE_UUID = "f7ee5e0c-1882-4c85-a6f1-8d6f81f10901"
 _DEFAULT_VOICE_RESULT_UUID = "f7ee5e0c-1882-4c85-a6f1-8d6f81f10902"
 _DEFAULT_AUDIO_DATA_UUID = "f7ee5e0c-1882-4c85-a6f1-8d6f81f10903"
 _DEFAULT_OUTPUT_DIR = "./audio_samples"
@@ -643,9 +645,16 @@ def receive(
         label_list = resolved_labels
 
     resolved_config = {
-        "device_name": _resolve_ble_value(device_name, Config.BLE_DEVICE_NAME, ""),
+        "device_name": _resolve_ble_value(
+            device_name, Config.BLE_DEVICE_NAME, _DEFAULT_DEVICE_NAME
+        ),
         "device_address": _resolve_ble_value(
             device_address, Config.BLE_DEVICE_ADDRESS, ""
+        ),
+        "voice_service_uuid": _resolve_ble_value(
+            None,
+            getattr(Config, "BLE_VOICE_SERVICE_UUID", None),
+            _DEFAULT_VOICE_SERVICE_UUID,
         ),
         "voice_result_uuid": _resolve_ble_value(
             voice_result_uuid,

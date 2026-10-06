@@ -148,6 +148,42 @@ class TestBLEReceiver(unittest.TestCase):
         self.receiver.stop()
         self.assertFalse(self.receiver._is_running)
 
+    def test_matches_advertisement_by_name(self):
+        device = MagicMock()
+        device.name = "Voice_BLE"
+        advertisement = MagicMock()
+        advertisement.local_name = None
+        advertisement.service_uuids = []
+        self.receiver.config.device_name = "Voice_BLE"
+        self.assertTrue(self.receiver._matches_advertisement(device, advertisement))
+
+    def test_matches_advertisement_by_local_name(self):
+        device = MagicMock()
+        device.name = None
+        advertisement = MagicMock()
+        advertisement.local_name = "Voice_BLE"
+        advertisement.service_uuids = []
+        self.receiver.config.device_name = "Voice_BLE"
+        self.assertTrue(self.receiver._matches_advertisement(device, advertisement))
+
+    def test_matches_advertisement_by_service_uuid(self):
+        device = MagicMock()
+        device.name = "SomethingElse"
+        advertisement = MagicMock()
+        advertisement.local_name = None
+        advertisement.service_uuids = ["F7EE5E0C-1882-4C85-A6F1-8D6F81F10901"]
+        self.receiver.config.device_name = "Voice_BLE"
+        self.assertTrue(self.receiver._matches_advertisement(device, advertisement))
+
+    def test_rejects_unrelated_advertisement(self):
+        device = MagicMock()
+        device.name = "soundcore"
+        advertisement = MagicMock()
+        advertisement.local_name = None
+        advertisement.service_uuids = ["FE9F"]
+        self.receiver.config.device_name = "Voice_BLE"
+        self.assertFalse(self.receiver._matches_advertisement(device, advertisement))
+
 
 if __name__ == "__main__":
     unittest.main()

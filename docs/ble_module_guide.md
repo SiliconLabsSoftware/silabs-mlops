@@ -12,7 +12,7 @@ After installing the SDK, you can start BLE audio collection from the command li
 
 ```bash
 sml ops ble receive \
-  --device-name "<YOUR_DEVICE_NAME>" \
+  --device-name "Voice_BLE" \
   --device-address "<YOUR_MAC_ADDRESS>" \
   --output-dir "/path/to/your/audio_samples" \
   --labels "on,off,unknown"
