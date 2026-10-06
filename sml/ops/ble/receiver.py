@@ -107,9 +107,7 @@ class BLEReceiver:
         device = None
         address = (self.config.device_address or "").strip()
         if address:
-            device = await BleakScanner.find_device_by_address(
-                address, timeout=timeout
-            )
+            device = await BleakScanner.find_device_by_address(address, timeout=timeout)
         if not device:
             device = await BleakScanner.find_device_by_filter(
                 self._matches_advertisement, timeout=timeout
